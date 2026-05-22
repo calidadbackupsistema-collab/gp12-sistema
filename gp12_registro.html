@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>GP12 — Registro</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{background:#f0f4f8;color:#1e293b;font-family:'IBM Plex Sans',sans-serif;min-height:100vh;padding-bottom:40px}
+.header{background:linear-gradient(135deg,#0f172a,#1e3a5f);border-bottom:3px solid #00d4ff;padding:18px 20px 14px;text-align:center;position:sticky;top:0;z-index:50}
+.hbadge{display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,#00d4ff,#00ff9d);font-size:15px;font-weight:900;color:#000;margin-bottom:8px;line-height:1.2}
+.htitle{font-size:20px;font-weight:700;color:#fff}.htitle span{color:#00d4ff}
+.hsub{font-size:11px;color:#94a3b8;margin-top:3px;font-family:'Noto Sans KR',sans-serif}
+#fb-status{font-size:11px;margin-top:6px;padding:3px 12px;border-radius:10px;display:inline-block;background:rgba(255,200,0,.2);color:#ffcc00}
+.section{margin:14px 16px;background:#fff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.sec-head{padding:12px 16px;background:#f8fafc;border-bottom:1px solid #e2e8f0;font-size:13px;font-weight:600;color:#1e293b;display:flex;align-items:center;gap:8px}
+.sec-body{padding:16px;background:#fff}
+.fgroup{margin-bottom:14px}
+.fgroup:last-child{margin-bottom:0}
+.flabel{font-size:11px;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;display:block}
+.finput{width:100%;background:#fff;border:1.5px solid #cbd5e1;border-radius:10px;padding:13px 14px;color:#1e293b;font-family:'IBM Plex Sans',sans-serif;font-size:16px;-webkit-appearance:none;appearance:none;transition:border-color .2s}
+.finput:focus{outline:none;border-color:#00d4ff;box-shadow:0 0 0 3px rgba(0,212,255,.12)}
+select.finput{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath fill='%23475569' d='M6 8L0 0h12z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px}
+select.finput option{background:#fff;color:#1e293b}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.turno-wrap{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tbtn{padding:14px;border-radius:12px;border:2px solid #e2e8f0;background:#f8fafc;cursor:pointer;text-align:center;font-family:inherit;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:3px}
+.tbtn .ico{font-size:26px;line-height:1}
+.tbtn .lbl{font-size:13px;font-weight:600;color:#475569}
+.tbtn .ko{font-size:10px;color:#94a3b8;font-family:'Noto Sans KR',sans-serif}
+.tbtn.don{border-color:#00d4ff;background:rgba(0,212,255,.08)}.tbtn.don .lbl{color:#00d4ff}
+.tbtn.non{border-color:#a855f7;background:rgba(168,85,247,.08)}.tbtn.non .lbl{color:#a855f7}
+.gwrap{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.gbtn{padding:14px;border-radius:12px;border:2px solid #e2e8f0;background:#f8fafc;cursor:pointer;text-align:center;font-family:inherit;font-size:16px;font-weight:700;color:#475569;transition:all .2s}
+.gbtn.aon{border-color:#00d4ff;background:rgba(0,212,255,.08);color:#00d4ff}
+.gbtn.bon{border-color:#ff9100;background:rgba(255,145,0,.08);color:#ff9100}
+.mrow{background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:10px}
+.mhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.mnum{font-size:13px;font-weight:700;color:#00d4ff}
+.mdel{background:none;border:none;color:#94a3b8;font-size:18px;cursor:pointer;padding:0}
+.mlabel{font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;display:block}
+.minput{width:100%;background:#fff;border:1.5px solid #e2e8f0;border-radius:8px;padding:9px 10px;color:#1e293b;font-family:'IBM Plex Sans',sans-serif;font-size:14px;-webkit-appearance:none;appearance:none}
+.minput:focus{outline:none;border-color:#00d4ff}
+select.minput{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath fill='%23475569' d='M5 7L0 0h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px}
+select.minput option{background:#fff;color:#1e293b}
+.mpn{background:rgba(0,212,255,.06);color:#00d4ff;font-weight:600;border-color:rgba(0,212,255,.3)}
+.add-btn{width:100%;padding:12px;background:transparent;border:2px dashed #cbd5e1;border-radius:10px;color:#64748b;font-family:inherit;font-size:13px;cursor:pointer;transition:all .2s;margin-top:4px}
+.add-btn:hover{border-color:#00d4ff;color:#00d4ff}
+.submit-btn{display:flex;align-items:center;justify-content:center;gap:10px;margin:14px 16px;width:calc(100% - 32px);padding:18px;border-radius:14px;border:none;background:linear-gradient(135deg,#00d4ff,#00ff9d);color:#000;font-size:17px;font-weight:700;font-family:inherit;cursor:pointer;box-shadow:0 6px 24px rgba(0,212,255,.3);transition:all .2s}
+.submit-btn:active{transform:scale(.98)}
+.submit-btn:disabled{opacity:.5;cursor:not-allowed}
+.errbar{background:rgba(255,68,68,.1);border:2px solid #ff4444;border-radius:12px;padding:14px 16px;font-size:14px;font-weight:600;color:#ff4444;margin:0 16px 12px;display:none;line-height:1.5}
+.errbar.show{display:block}
+.success{display:none;text-align:center;padding:48px 20px;min-height:100vh;background:#f0f4f8}
+.s-icon{font-size:80px;margin-bottom:20px;animation:pop .4s ease}
+@keyframes pop{0%{transform:scale(0)}80%{transform:scale(1.1)}100%{transform:scale(1)}}
+.s-title{font-size:24px;font-weight:700;color:#1e293b;margin-bottom:6px}
+.s-sub{font-size:13px;color:#475569;margin-bottom:24px}
+.s-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:24px}
+.s-box{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px}
+.s-val{font-size:24px;font-weight:700}
+.s-lbl{font-size:10px;color:#475569;margin-top:3px}
+.s-nuevo{width:100%;padding:15px;border-radius:12px;border:1.5px solid #e2e8f0;background:#fff;color:#1e293b;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;margin-bottom:8px}
+.s-dash{width:100%;padding:13px;border-radius:12px;border:2px solid #00d4ff;background:transparent;color:#00d4ff;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer}
+.loading{position:fixed;inset:0;background:#f0f4f8;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100}
+.spinner{width:40px;height:40px;border:3px solid #e2e8f0;border-top-color:#00d4ff;border-radius:50%;animation:spin .7s linear infinite;margin-bottom:14px}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<div class="loading" id="loading">
+  <div class="spinner"></div>
+  <div style="color:#475569;font-size:14px">Cargando GP12...<br><span style="font-family:'Noto Sans KR',sans-serif;font-size:12px">GP12 로딩 중...</span></div>
+</div>
+
+<div id="form-screen" style="display:none">
+  <div class="header">
+    <div class="hbadge">GP<br>12</div>
+    <div class="htitle">Registro <span>GP12</span></div>
+    <div class="hsub">검사 기록 / Formulario de Inspección</div>
+    <div id="fb-status">⏳ Conectando...</div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head">📋 Información General <span style="font-size:10px;font-family:'Noto Sans KR',sans-serif;color:#64748b">일반 정보</span></div>
+    <div class="sec-body">
+      <div class="row2" style="margin-bottom:14px">
+        <div class="fgroup" style="margin-bottom:0">
+          <label class="flabel">Mesa / 테이블 *</label>
+          <select class="finput" id="f-mesa">
+            <option value="">Seleccionar...</option>
+            <option value="1">Mesa 1</option><option value="2">Mesa 2</option>
+            <option value="3">Mesa 3</option><option value="4">Mesa 4</option>
+            <option value="5">Mesa 5</option><option value="6">Mesa 6</option>
+            <option value="7">Mesa 7</option><option value="8">Mesa 8</option>
+            <option value="9">Mesa 9</option><option value="10">Mesa 10</option>
+            <option value="11">Mesa 11</option><option value="12">Mesa 12</option>
+            <option value="13">Mesa 13</option><option value="14">Mesa 14</option>
+            <option value="15">Mesa 15</option>
+          </select>
+        </div>
+        <div class="fgroup" style="margin-bottom:0">
+          <label class="flabel">Fecha / 날짜</label>
+          <input type="date" class="finput" id="f-fecha">
+        </div>
+      </div>
+      <div class="fgroup">
+        <label class="flabel"># Inspector GP12 *</label>
+        <input type="text" class="finput" id="f-inspector" placeholder="Ej: GP12-045" autocomplete="off">
+      </div>
+      <div class="fgroup" style="margin-bottom:0">
+        <label class="flabel">Turno / 교대</label>
+        <div class="turno-wrap">
+          <button class="tbtn don" id="btn-dia" onclick="setTurno('dia')">
+            <div class="ico">🌅</div><div class="lbl">Día</div><div class="ko">주간</div>
+          </button>
+          <button class="tbtn" id="btn-noche" onclick="setTurno('noche')">
+            <div class="ico">🌙</div><div class="lbl">Noche</div><div class="ko">야간</div>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head">👥 Grupo / 그룹</div>
+    <div class="sec-body">
+      <div class="gwrap">
+        <button class="gbtn aon" id="btn-ga" onclick="setGrupo('A')">🅰️ Grupo A</button>
+        <button class="gbtn" id="btn-gb" onclick="setGrupo('B')">🅱️ Grupo B</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head">🔬 Modelos Inspeccionados <span style="font-size:10px;font-family:'Noto Sans KR',sans-serif;color:#64748b">검사 모델</span></div>
+    <div class="sec-body">
+      <div id="modelos-wrap"></div>
+      <button class="add-btn" id="btn-add" onclick="addLinea()">＋ Agregar Línea / 라인 추가</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-head">📝 Observaciones</div>
+    <div class="sec-body">
+      <textarea class="finput" id="f-obs" rows="3" placeholder="Observaciones adicionales..." style="resize:vertical;min-height:70px;background:#fff"></textarea>
+    </div>
+  </div>
+
+  <div class="errbar" id="errbar"></div>
+  <button class="submit-btn" id="btn-save" onclick="guardar()">💾 Guardar Registro · 기록 저장</button>
+</div>
+
+<div class="success" id="success-screen">
+  <div class="s-icon">✅</div>
+  <div class="s-title">¡Guardado! <span style="font-family:'Noto Sans KR',sans-serif">저장됨!</span></div>
+  <div class="s-sub" id="s-sub">Registro guardado en Firebase</div>
+  <div class="s-grid">
+    <div class="s-box"><div class="s-val" id="s-mesa" style="color:#00d4ff">—</div><div class="s-lbl">Mesa</div></div>
+    <div class="s-box"><div class="s-val" id="s-total" style="color:#1e293b">—</div><div class="s-lbl">Inspeccionadas</div></div>
+    <div class="s-box"><div class="s-val" id="s-ng" style="color:#ff4444">—</div><div class="s-lbl">NG</div></div>
+  </div>
+  <button class="s-nuevo" onclick="nuevoReg()">📋 Nuevo Registro / 새 기록</button>
+  <button class="s-dash" onclick="window.location.href='gp12_dashboard.html'">📊 Ver Dashboard</button>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<script>
+const BOM=[
+  {c:'DN-AUTOMOTIVE',m:'B1TCC',d:'B1TCC CHAMFER RING',p:'17870901'},
+  {c:'DN-AUTOMOTIVE',m:'B1TCC',d:'B1TCC OUTER RING',p:'18608203'},
+  {c:'DN-AUTOMOTIVE',m:'B1TCC',d:'B1TCC OUTER SHELL',p:'15418804'},
+  {c:'DN-AUTOMOTIVE',m:'BEV2',d:'BEV2 OUTER SLEEVE',p:'14913601'},
+  {c:'DN-AUTOMOTIVE',m:'BEV2',d:'BEV2 PLASTIC INSERT',p:'15294401'},
+  {c:'DN-AUTOMOTIVE',m:'BEV2',d:'HOUSING (LH) FRT',p:'15378401'},
+  {c:'DN-AUTOMOTIVE',m:'BEV2',d:'HOUSING (RH) FRT',p:'10787001'},
+  {c:'HPA',m:'BT1CC',d:'BT1CC A/HOUSING ASSY LH',p:''},
+  {c:'HPA',m:'BT1CC',d:'BT1CC A/HOUSING ASSY RH',p:''},
+  {c:'HPA',m:'C1XX',d:'C1XX A/HOUSING ASSY LH',p:'BC710A2600'},
+  {c:'HPA',m:'C1XX',d:'C1XX A/HOUSING ASSY RH',p:'BC711A2600'},
+  {c:'HPA',m:'EVEREST',d:'EVEREST A/HOUSING ASSY LH',p:'BC710A2500'},
+  {c:'HPA',m:'EVEREST',d:'EVEREST A/HOUSING ASSY RH',p:'BC711A2500'},
+  {c:'HPA',m:'EVEREST',d:'EVEREST A/HOUSING COVER  ASSY LH',p:'BC718A2500'},
+  {c:'HPA',m:'EVEREST',d:'EVEREST A/HOUSING COVER  ASSY RH',p:'BC719A2500'},
+  {c:'HPA',m:'EVEREST',d:'EVEREST GEAR BOX RH',p:'BC742A2500'},
+  {c:'HPA',m:'EVEREST',d:'EVEREST GEAR BOX RH',p:'BC743A2500'},
+  {c:'HPA',m:'EVEREST',d:'EVEREST WORM SHAFT ASSY',p:'BC751A2500'},
+  {c:'HPA',m:'EVEREST',d:'EVEREST WORM WHEEL ASSY',p:'BC755A2500'},
+  {c:'HPA',m:'MQ4A',d:'MQ4A CARRIER MOLD ASSY',p:'BC771A1100'},
+  {c:'HPA',m:'MQ4A',d:'MQ4A WORM SHAFT ASSY',p:'BC750A1100'},
+  {c:'HPA',m:'MQ4A',d:'MQ4A WORM WHEEL ASSY',p:'BC757A1700'},
+  {c:'HPA',m:'MQ4a',d:'MQ4A A/HOUSING ASSY LH',p:'BC710A1100'},
+  {c:'HPA',m:'MQ4a',d:'MQ4A A/HOUSING ASSY RH',p:'BC711A1100'},
+  {c:'HPA',m:'SPA2',d:'SPA2 A/HOUSING ASSY LH',p:'BC710A2100'},
+  {c:'HPA',m:'SPA2',d:'SPA2 A/HOUSING ASSY RH',p:'BC711A2100'},
+  {c:'HPA',m:'SPA2',d:'SPA2 CARRIER MOLD ASSY',p:'BC771A2600'},
+  {c:'HPA',m:'TESLA',d:'TESLA A/HOUSING ASSY LH',p:'BC710A2300'},
+  {c:'HPA',m:'TESLA',d:'TESLA A/HOUSING ASSY RH',p:'BC711A2300'},
+  {c:'HPA',m:'TESLA',d:'TESLA A/HOUSING COVER LH',p:'BC718A1101'},
+  {c:'HPA',m:'TESLA',d:'TESLA A/HOUSING COVER RH',p:'BC719A1101'},
+  {c:'HPA',m:'TESLA',d:'TESLA CARRIER MOLD ASSY',p:'BC771A2400'},
+  {c:'MCM',m:'BDM',d:'BDM CAP FRT',p:'SK383A0101'},
+  {c:'MCM',m:'BDM',d:'BDM DUST SEAL ASSY FRT',p:'SK380A0101'},
+  {c:'MCM',m:'BDM',d:'BDM DUST SEAL ASSY RR',p:'SH280A1601'},
+  {c:'MCM',m:'BDM/CN7A',d:'BDM CAP RR PEQUEÑO',p:'SH285A1201'},
+  {c:'MCM',m:'BDM/CN7A',d:'BDM INSULATOR CAP ASSY RR',p:'SZ434C1601'},
+  {c:'MCM',m:'BDM_GT',d:'BDM GT INSULATOR  B/RUBBER ASSY LOWER',p:'SZ444C3301'},
+  {c:'MCM',m:'BDM_LA',d:'BDM LA INSULATOR  B/RUBBER ASSY LOWER',p:'SZ444C3001'},
+  {c:'MCM',m:'BDM_NA',d:'BDM INSULATOR  B/RUBBER ASSY LOWER',p:'SZ444C2901'},
+  {c:'MCM',m:'BERLIN',d:'BERLIN TOP MOUNT ASSY RR',p:'SZ437A2105'},
+  {c:'MCM',m:'BEV3',d:'BEV3 1 REBOUND SPRING ASSY',p:'SZ342A0101'},
+  {c:'MCM',m:'BEV3',d:'BEV3 2 REBOUND SPRING ASSY',p:'SZ342A2001'},
+  {c:'MCM',m:'BEV3',d:'BEV3 3 REBOUND SPRING ASSY',p:'SZ342A1801'},
+  {c:'MCM',m:'BEV3',d:'BEV3 STOP RUBBER',p:'SH425A0101'},
+  {c:'MCM',m:'BL7M',d:'BL7M B/RUBBER ASSY FRT  BL7M',p:'SZ442A9602'},
+  {c:'MCM',m:'BL7M',d:'BL7M B/RUBBER ASSY RR',p:'SZ442A9801'},
+  {c:'MCM',m:'BL7M',d:'BL7M BOOT',p:'BB61502000'},
+  {c:'MCM',m:'BL7M',d:'BL7M BUSH',p:'GL689BC200'},
+  {c:'MCM',m:'BL7M',d:'BL7M CAP FRT',p:'SK285A1601'},
+  {c:'MCM',m:'BL7M',d:'BL7M CAP RR PEQUEÑO',p:'SH285A1601'},
+  {c:'MCM',m:'BL7M',d:'BL7M DUST CAP ASSY',p:'GP371A7450'},
+  {c:'MCM',m:'BL7M',d:'BL7M LEVER ASSY',p:'GL771BC000'},
+  {c:'MCM',m:'BL7M',d:'BL7M RSVR  SWITCH ASSY',p:'BM341A7900'},
+  {c:'MCM',m:'BL7M',d:'BL7M RSVR CAP ASSY PINTURA',p:'BM346A1500'},
+  {c:'MCM',m:'BR2',d:'BR2 BUMPER RUBBER SUB ASSY FRT',p:'SZ442C8701'},
+  {c:'MCM',m:'BR2',d:'BR2 DUST CAP ASSY',p:'GP371A2200'},
+  {c:'MCM',m:'BR2',d:'BR2 LEVER ASSY',p:'GL770A1200'},
+  {c:'MCM',m:'BR2',d:'BR2 MOUNTING RUBBER',p:'GR28712200'},
+  {c:'MCM',m:'BR2',d:'BR2 RSVR SWITCH ASSY',p:'BM33108200'},
+  {c:'MCM',m:'BR2',d:'BR2 VALVE BODY',p:'BB46202503'},
+  {c:'MCM',m:'BR2',d:'BR2 VALVE BODY 7.5',p:'BB46202502'},
+  {c:'MCM',m:'BR2',d:'BUMPER RUBBER ASSY LOWER',p:'SZ442C8801'},
+  {c:'MCM',m:'BV1Hx(eLCV)',d:'ELCV DUST COVER RR',p:'SZ441A0301'},
+  {c:'MCM',m:'BV1Hx(eLCV)',d:'ELCV STOP RUBBER FRT',p:'SS425A0101'},
+  {c:'MCM',m:'BV1Hx(eLCV)',d:'ELCV STOP RUBBER RR',p:'SS425A0201'},
+  {c:'MCM',m:'C223',d:'REAR WIPER BRACKET',p:'201014001'},
+  {c:'MCM',m:'C2B2',d:'C2B2 DUST CAP',p:'GP373B3500'},
+  {c:'MCM',m:'CANOO LV1',d:'CANOO BUMPER RUBBER ASSY FRT',p:'SZ442C6701'},
+  {c:'MCM',m:'CANOO LV1',d:'CANOO BUMPER RUBBER RR',p:'SZ442C6702'},
+  {c:'MCM',m:'CANOO LV1',d:'CANOO DUST SEAL ASSY RR',p:'SH380A2501'},
+  {c:'MCM',m:'CANOO LV1',d:'CANOO INSULATOR CAP RR',p:'SZ434A3501'},
+  {c:'MCM',m:'CANOO LV1',d:'CANOO LV1 STOP RUBBER FRT',p:'SV32500101'},
+  {c:'MCM',m:'CL4M',d:'CL4M INSULATOR  B/RUBBER ASSY LOWER',p:'SZ444B4601'},
+  {c:'MCM',m:'CN7A',d:'CN7A CAP FRT',p:'SK383A8701'},
+  {c:'MCM',m:'CN7A',d:'CN7A INSULATOR ASSY',p:'SZ433C5501'},
+  {c:'MCM',m:'CN7A',d:'CN7A SPRING PAD LOWER',p:'SZ460C8801'},
+  {c:'MCM',m:'CN7A',d:'INSULATOR  B/RUBBER ASSY LOWER',p:'SZ444C3501'},
+  {c:'MCM',m:'CX727',d:'CX727 DUST CAP LHD',p:'GP373A2900'},
+  {c:'MCM',m:'CX727',d:'CX727 DUST CAP RHD',p:'GP373A3000'},
+  {c:'MCM',m:'D2UC',d:'D2UC CAP RR PEQUEÑO',p:'SU385A1101'},
+  {c:'MCM',m:'D2UC',d:'D2UC DENALI STOP RUBBER',p:'SH325A0101'},
+  {c:'MCM',m:'D2UC',d:'D2UC STOP RUBBER FRT',p:'SK325A1201'},
+  {c:'MCM',m:'D2UC',d:'D2UC STOP RUBBER RR',p:'SH325A1101'},
+  {c:'MCM',m:'D2UC',d:'D2UC TOP MOUNT  DUST COVER ASSY RR',p:'SZ437A2201'},
+  {c:'MCM',m:'DN8a',d:'DN8A SPRING PAD LOWER',p:'SZ460A0501'},
+  {c:'MCM',m:'GAMMA',d:'GAMMA RSVR  SWITCH ASSY',p:'BM33107900'},
+  {c:'MCM',m:'GEM',d:'GEM BRACKET ASSY',p:'BH9003Z100'},
+  {c:'MCM',m:'GSB',d:'GSB BUMPER RUBBER ASSY RR',p:'SZ442C4303'},
+  {c:'MCM',m:'GSB',d:'GSB DUST SEAL ASSY RR',p:'SH380A1501'},
+  {c:'MCM',m:'HB',d:'HB BUMPER RUBBER ASSY FRT',p:'SZ442C2801'},
+  {c:'MCM',m:'HC',d:'HC BUMPER RUBBER ASSY RR',p:'SZ442A0801'},
+  {c:'MCM',m:'HC',d:'SC DUST COVER RR',p:'SZ441A0801'},
+  {c:'MCM',m:'JK1A',d:'JK1A SPRING PAD LOWER',p:'SZ460A7101'},
+  {c:'MCM',m:'MODEL 3',d:'3 TOP MOUNT ASSY FRT',p:'SZ437A2102'},
+  {c:'MCM',m:'MODEL 3',d:'3 TOP MOUNT ASSY RR',p:'SZ437A2101'},
+  {c:'MCM',m:'MODEL 3',d:'MODEL3 DUST SEAL ASSY FRT',p:'SH380A2701'},
+  {c:'MCM',m:'MODEL 3',d:'MODEL3 DUST SEAL ASSY RR',p:'SH380A2201'},
+  {c:'MCM',m:'MODEL 3',d:'MODEL3 TOP MOUNT SUB ASSY FRT',p:'SZ437A2001'},
+  {c:'MCM',m:'MODEL 3',d:'MOLEL3 STOP RUBBER FRT',p:'SV32500102'},
+  {c:'MCM',m:'MODEL 3',d:'TESLA SPRING PAD LOWER',p:'SZ460C3401'},
+  {c:'MCM',m:'MODEL Y',d:'MODEL Y TOP MOUNT SUB ASSY FRT',p:'SZ437A2002Z1'},
+  {c:'MCM',m:'MODEL Y',d:'MODEL Y TOP MOUNT SUB ASSY FRT',p:'SZ437A2005'},
+  {c:'MCM',m:'MQ4A',d:'MQ4A CAP RR',p:'SH385A0701'},
+  {c:'MCM',m:'MQ4A',d:'MQ4A SPRING PAD LOWER',p:'SZ460A0701'},
+  {c:'MCM',m:'Model_Y',d:'Y TOP MOUNT ASSY RR',p:'SZ437A2104'},
+  {c:'MCM',m:'NV35',d:'NV35 GT30C CAP RR',p:'SH385D3801'},
+  {c:'MCM',m:'NV35',d:'NV35 GT35C CAP FRT',p:'SH385D3701'},
+  {c:'MCM',m:'NV35',d:'SPACER TET1PA66+GF30 → PA6+GF30',p:'SZ929A3801'},
+  {c:'MCM',m:'NX4 OB',d:'NX4 OB STOP RUBBER FRT',p:'SK42500101'},
+  {c:'MCM',m:'NX4A',d:'NX4A BRACKET ASSY HECU',p:'BH9003BC00'},
+  {c:'MCM',m:'NX4A',d:'NX4A CAP FRT',p:'SK485A2201'},
+  {c:'MCM',m:'NX4A',d:'NX4A CAP RR',p:'SH385A3801'},
+  {c:'MCM',m:'NX4A',d:'NX4A ECU COVER',p:'GE52100L00'},
+  {c:'MCM',m:'NX4A',d:'NX4A LEVER ASSY',p:'GL771N4000'},
+  {c:'MCM',m:'NX4A',d:'NX4A SPRING PAD LOWER',p:'SZ460A0801'},
+  {c:'MCM',m:'NX4A',d:'NX4A WORM WHEEL',p:'GM441N5000'},
+  {c:'MCM',m:'NX4A/NX4 OB',d:'NX4A INSULATOR ASSY',p:'SZ433C2801'},
+  {c:'MCM',m:'ON',d:'ON SPRING PAD LOWER',p:'SZ460A0401'},
+  {c:'MCM',m:'P708',d:'P708 DUST COVER',p:'GP27865U00'},
+  {c:'MCM',m:'S650',d:'ORIFICE PISTON S650,R',p:'SK435A9500'},
+  {c:'MCM',m:'S650',d:'S650 1 REBOUND SPRING ASSY',p:'SZ342A6501'},
+  {c:'MCM',m:'S650',d:'S650 2 REBOUND SPRING ASSY',p:'SZ342A6502'},
+  {c:'MCM',m:'S650',d:'S650 3 REBOUND SPRING ASSY',p:'SZ342A6503'},
+  {c:'MCM',m:'S650',d:'S650 4 REBOUND SPRING ASSY',p:'SZ342A6504'},
+  {c:'MCM',m:'S650',d:'S650 BEAUTY CAP PEQUEÑO',p:'SZ434B6501'},
+  {c:'MCM',m:'S650',d:'S650 BUMPER RUBBER ASSY FRT',p:'SZ442B9501'},
+  {c:'MCM',m:'S650',d:'S650 BUMPER RUBBER RR',p:'SZ442B6501'},
+  {c:'MCM',m:'S650',d:'S650 BUMPER RUBBER SUB ASSY FRT',p:'SZ440B9502'},
+  {c:'MCM',m:'S650',d:'S650 CAP FRT',p:'SK485A9501'},
+  {c:'MCM',m:'S650',d:'S650 DUST COVER FRT',p:'SZ441B9501'},
+  {c:'MCM',m:'S650',d:'S650 INSULATOR ASSY',p:'SZ433B6501'},
+  {c:'MCM',m:'SC',d:'SC CAP FRT',p:'SK283A2701'},
+  {c:'MCM',m:'SC',d:'SC RSVR SWITCH ASSY',p:'BM33105900'},
+  {c:'MCM',m:'SC/HC',d:'SC CAP RR PEQUEÑO',p:'SH285A1401'},
+  {c:'MCM',m:'SC/HC',d:'SC DUST SEAL ASSY FRT',p:'SK280A1701'},
+  {c:'MCM',m:'SC/HC',d:'SC DUST SEAL ASSY RR',p:'SH280A1401'},
+  {c:'MCM',m:'SC/HC',d:'SC RSVR CAP ASSY',p:'BM34605400'},
+  {c:'MCM',m:'SC/HC',d:'SC RSVR CAP ASSY PINTURA',p:'BM34605700'},
+  {c:'MCM',m:'SC/HC',d:'SC STOP RUBBER FRT',p:'SK22500101'},
+  {c:'MCM',m:'SC/HC',d:'SC VALVE BODY',p:'BB46202504'},
+  {c:'MCM',m:'SC/HC/BR2',d:'SC BOOT',p:'BB61502800'},
+  {c:'MCM',m:'SC/HC/BR2',d:'SC INSULATOR ASSY RR',p:'SZ433C3401'},
+  {c:'MCM',m:'SC/HC/BR2/GSB',d:'SC INSULATOR  CAP RR',p:'SZ434C1201'},
+  {c:'MCM',m:'SU2B',d:'SU2B B/RUBBER ASSY FRT',p:'SZ442C4803'},
+  {c:'MCM',m:'SU2B',d:'SU2B B/RUBBER ASSY RR',p:'SZ442A6101'},
+  {c:'MCM',m:'SU2B',d:'SU2B DUST CAP ASSY',p:'GP371D5000'},
+  {c:'MCM',m:'SU2B',d:'SU2B HINGE BUSH',p:'GM49533300'},
+  {c:'MCM',m:'SU2B',d:'SU2B INSULATOR ASSY',p:'SZ433A7801'},
+  {c:'MCM',m:'SU2B',d:'SU2B LEVER ASSY',p:'GL771B3200'},
+  {c:'MCM',m:'SU2B',d:'SU2B RSVR SWITCH ASSY',p:'BM331A3500'},
+  {c:'MCM',m:'SU2B',d:'SU2B VALVE BODY',p:'BB46202505'},
+  {c:'MCM',m:'SU2B',d:'SU2B WORM WHEEL',p:'GM441B2102'},
+  {c:'MCM',m:'TESLA',d:'TESLA SPACER',p:'SZ929A1101'},
+  {c:'MCM',m:'TESLA',d:'Y LEGACY TOP MOUNT SUB ASSY FRT',p:'SZ437B7901'},
+  {c:'MCM',m:'TESLA AUSTIN',d:'AUSTIN TOP MOUNT ASSY RR',p:'SZ437A2106'},
+  {c:'MCM',m:'TESLA AUSTIN',d:'TESLA AUSTIN TOP MOUNT SUB ASSY FRT',p:'SZ437A2004'},
+  {c:'MCM',m:'TESLA AWD',d:'Y AWD TOP MOUNT ASSY RR',p:'SZ437A2103'},
+  {c:'MCM',m:'TESLA AWD',d:'Y BERLIN TOP MOUNT ASSY RR',p:'SZ437A2107'},
+  {c:'MCM',m:'TESLA BERIN',d:'TESLA BERIN TOP MOUNT SUB ASSY FRT',p:'SZ437A2003Z1'},
+  {c:'MCM',m:'XMA',d:'XMA SPRING PAD LOWER',p:'SZ46005201'},
+  {c:'MKDC',m:'MODEL 3',d:'TESLA NOISE DAMPER BLANCO',p:'GR25501400'},
+  {c:'MKDC',m:'MODEL 3',d:'TESLA RACK BUSHING',p:'GP92400400'},
+  {c:'MKDC',m:'MODEL 3',d:'TESLA SCREW BUSHING',p:'GP92400300'},
+  {c:'MKDC',m:'RIVIAN',d:'RIVIAN NOISE DAMPER NEGRO',p:'GP255A2700'},
+  {c:'MMX',m:'BDM',d:'BDM BUMPER RUBBER ASSY FRT',p:'SZ440C5702'},
+  {c:'MMX',m:'BDM',d:'BDM DUST COVER FRT',p:'SZ441C6201'},
+  {c:'MMX',m:'BDM',d:'BDM RSVR CAP ASSY',p:'4H58570120'},
+  {c:'MMX',m:'BDM',d:'BDM RSVR SENSOR ASSY',p:'M658563000'},
+  {c:'MMX',m:'BDM_GT',d:'BDM GT BUMPER RUBBER ASSY FRT',p:'SZ440C7102'},
+  {c:'MMX',m:'BL7M',d:'BL7M HEAD LAMP STRIP ASSY LH',p:'BC92114010'},
+  {c:'MMX',m:'BL7M',d:'BL7M HEAD LAMP STRIP ASSY RH',p:'BC92114020'},
+  {c:'MMX',m:'BR2 PE',d:'BR2 PE HEAD LAMP STRIP ASSY LH',p:'R192114010'},
+  {c:'MMX',m:'BR2 PE',d:'BR2 PE HEAD LAMP STRIP ASSY RH',p:'R192114020'},
+  {c:'MMX',m:'CL4M',d:'CL4M BELLOWS ASSY',p:'P256565000'},
+  {c:'MMX',m:'CL4M_LHD',d:'CL4M DUST CAP ASSY LHD',p:'AT56555000'},
+  {c:'MMX',m:'CL4M_LHD',d:'CX727 DUST CAP ASSY LHD',p:'AT56555000'},
+  {c:'MMX',m:'CL4M_RHD',d:'CL4M DUST CAP ASSY RHD',p:'AT56555090'},
+  {c:'MMX',m:'CL4M_RHD',d:'CX727 DUST CAP ASSY RHD',p:'AT56555091'},
+  {c:'MMX',m:'CN7A',d:'CN7A RSVR CAP ASSY PINTURA',p:'Q558570100'},
+  {c:'MMX',m:'CN7A',d:'CN7A RSVR SENSOR ASSY',p:'AB58563300'},
+  {c:'MMX',m:'CN7A',d:'CN7A VALVE BODY',p:'AA59135300'},
+  {c:'MMX',m:'DN8A',d:'DN8A RSVR  SENSOR ASSY',p:'L158563000'},
+  {c:'MMX',m:'DN8A',d:'DN8A RSVR CAP ASSY',p:'Q558570220'},
+  {c:'MMX',m:'MQ4A PE',d:'MQ4A END COVER ASSY',p:'R556354AA0'},
+  {c:'MMX',m:'MQ4A PE',d:'MQ4A PE BELLOWS ASSY',p:'S156565000'},
+  {c:'MMX',m:'MQ4A PE',d:'MQ4A PE DUST CAP ASSY',p:'P256555500'},
+  {c:'MMX',m:'NX4A',d:'NX4A RSVR SENSOR ASSY',p:'N958563000'},
+  {c:'MMX',m:'NX4A',d:'NX4A VALVE BODY',p:'C559135250'},
+  {c:'MMX',m:'SC/HC',d:'SC BUMPER RUBBER ASSY FRT',p:'SZ442C4801'},
+  {c:'PRIMAX',m:'BL7M',d:'BL7M BELLOWS ASSY',p:'GP274A3400'},
+  {c:'PRIMAX',m:'BR2',d:'BR2 BELLOWS ASSY',p:'GP274A1900'},
+  {c:'PRIMAX',m:'BR2',d:'BR2 NOISE DAMPER RING BLANCO',p:'GP25501700'},
+  {c:'PRIMAX',m:'BR2',d:'BR2 NOISE DAMPER RING NEGRO',p:'GP25501900'},
+  {c:'PRIMAX',m:'C2B2',d:'C2B2 BELLOWS ASSY',p:'GP274A4470'},
+  {c:'PRIMAX',m:'CX727',d:'CX727 BELLOWS ASSY',p:'GP274A3300'},
+  {c:'PRIMAX',m:'NX4A',d:'NX4A BELLOWS ASSY',p:'GP274A5300'},
+  {c:'PRIMAX',m:'SU2B',d:'SU2B BELLOWS ASSY',p:'GP274S1900'}
+];
+
+const DEFECTOS=['Dimensional','Superficie','Burr','Flash','Contaminación','Color','Ensamble','Marca de flujo','Rechupe','Deformación','Grieta','Otro'];
+
+// ── FIREBASE ──────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey:"AIzaSyBRTwiaPIHK2zvnQIR-euLhu2OEYRDN6FU",
+  authDomain:"gp12-database.firebaseapp.com",
+  projectId:"gp12-database",
+  storageBucket:"gp12-database.firebasestorage.app",
+  messagingSenderId:"1076961452512",
+  appId:"1:1076961452512:web:f13fedc6048ff125aa8b85"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// ── STATE ─────────────────────────────────────────────────
+let turno='dia', grupo='A', lineaCount=0;
+
+// ── INIT ──────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', function(){
+  document.getElementById('f-fecha').value = new Date().toISOString().slice(0,10);
+  addLinea();
+  // Test Firebase connection
+  db.collection('gp12_registros').limit(1).get()
+    .then(function(){
+      setSt('✅ Conectado a Firebase','#00e676','rgba(0,230,118,.2)');
+    })
+    .catch(function(e){
+      setSt('⚠️ '+e.code,'#ff4444','rgba(255,68,68,.2)');
+      console.error('Firebase test error:',e);
+    });
+  setTimeout(function(){
+    document.getElementById('loading').style.display='none';
+    document.getElementById('form-screen').style.display='block';
+  }, 700);
+});
+
+function setSt(txt,color,bg){
+  var el=document.getElementById('fb-status');
+  if(el){el.textContent=txt;el.style.color=color;el.style.background=bg;}
+}
+
+// ── TURNO / GRUPO ─────────────────────────────────────────
+function setTurno(t){
+  turno=t;
+  document.getElementById('btn-dia').className='tbtn'+(t==='dia'?' don':'');
+  document.getElementById('btn-noche').className='tbtn'+(t==='noche'?' non':'');
+}
+function setGrupo(g){
+  grupo=g;
+  document.getElementById('btn-ga').className='gbtn'+(g==='A'?' aon':'');
+  document.getElementById('btn-gb').className='gbtn'+(g==='B'?' bon':'');
+}
+
+// ── BOM HELPERS ───────────────────────────────────────────
+function uniqs(arr){ return [...new Set(arr)].sort(); }
+function clienteList(){ return uniqs(BOM.map(function(r){return r.c})); }
+function modeloList(c){ return uniqs(BOM.filter(function(r){return r.c===c}).map(function(r){return r.m})); }
+function descList(c,m){ return BOM.filter(function(r){return r.c===c&&r.m===m}).sort(function(a,b){return a.d.localeCompare(b.d)}); }
+
+// ── LINEAS ───────────────────────────────────────────────
+function addLinea(){
+  if(lineaCount>=10){alert('Máximo 10 líneas');return;}
+  lineaCount++;
+  var id=lineaCount;
+  var wrap=document.getElementById('modelos-wrap');
+  var div=document.createElement('div');
+  div.className='mrow'; div.id='linea-'+id;
+
+  var cOpts='<option value="">-- Cliente --</option>';
+  clienteList().forEach(function(c){ cOpts+='<option value="'+c+'">'+c+'</option>'; });
+
+  var dOpts='<option value="">Sin defecto</option>';
+  DEFECTOS.forEach(function(d){ dOpts+='<option value="'+d+'">'+d+'</option>'; });
+
+  div.innerHTML=
+    '<div class="mhead">'
+      +'<div class="mnum">Línea #'+id+'</div>'
+      +(id>1?'<button class="mdel" onclick="delLinea('+id+')">✕</button>':'')
+    +'</div>'
+    // Cliente
+    +'<div style="margin-bottom:8px">'
+      +'<span class="mlabel">Cliente *</span>'
+      +'<select class="minput" id="lc-'+id+'" onchange="onC('+id+')" style="width:100%">'+cOpts+'</select>'
+    +'</div>'
+    // Modelo
+    +'<div style="margin-bottom:8px">'
+      +'<span class="mlabel">Modelo *</span>'
+      +'<select class="minput" id="lm-'+id+'" onchange="onM('+id+')" style="width:100%">'
+        +'<option value="">-- Modelo --</option>'
+      +'</select>'
+    +'</div>'
+    // Descripcion
+    +'<div style="margin-bottom:8px">'
+      +'<span class="mlabel">Descripción *</span>'
+      +'<select class="minput" id="ld-'+id+'" onchange="onD('+id+')" style="width:100%">'
+        +'<option value="">-- Descripción --</option>'
+      +'</select>'
+    +'</div>'
+    // No. Parte + Operador
+    +'<div class="row2" style="margin-bottom:8px">'
+      +'<div><span class="mlabel">No. de Parte</span>'
+        +'<input type="text" class="minput mpn" id="lp-'+id+'" readonly placeholder="Auto"></div>'
+      +'<div><span class="mlabel"># Op. Producción</span>'
+        +'<input type="text" class="minput" id="lo-'+id+'" placeholder="OP-123" autocomplete="off"></div>'
+    +'</div>'
+    // Cantidades
+    +'<div class="row2" style="margin-bottom:8px">'
+      +'<div><span class="mlabel">Cant. Inspeccionada</span>'
+        +'<input type="number" class="minput" id="lt-'+id+'" placeholder="0" min="0" inputmode="numeric"></div>'
+      +'<div><span class="mlabel">Cant. Rechazada NG</span>'
+        +'<input type="number" class="minput" id="ln-'+id+'" placeholder="0" min="0" inputmode="numeric"></div>'
+    +'</div>'
+    // Defecto
+    +'<div><span class="mlabel">Defecto de Rechazo</span>'
+      +'<select class="minput" id="ldef-'+id+'" style="width:100%">'+dOpts+'</select>'
+    +'</div>';
+
+  wrap.appendChild(div);
+  if(lineaCount>=10) document.getElementById('btn-add').style.display='none';
+}
+
+function delLinea(id){
+  var el=document.getElementById('linea-'+id);
+  if(el) el.remove();
+  document.getElementById('btn-add').style.display='block';
+}
+
+function onC(id){
+  var c=document.getElementById('lc-'+id).value;
+  var mSel=document.getElementById('lm-'+id);
+  var dSel=document.getElementById('ld-'+id);
+  var pEl=document.getElementById('lp-'+id);
+  var opts='<option value="">-- Modelo --</option>';
+  modeloList(c).forEach(function(m){ opts+='<option value="'+m+'">'+m+'</option>'; });
+  mSel.innerHTML=opts;
+  dSel.innerHTML='<option value="">-- Descripción --</option>';
+  if(pEl) pEl.value='';
+}
+
+function onM(id){
+  var c=document.getElementById('lc-'+id).value;
+  var m=document.getElementById('lm-'+id).value;
+  var dSel=document.getElementById('ld-'+id);
+  var pEl=document.getElementById('lp-'+id);
+  var descs=descList(c,m);
+  var opts='<option value="">-- Descripción --</option>';
+  descs.forEach(function(r){ opts+='<option value="'+r.d+'" data-pn="'+r.p+'">'+r.d+'</option>'; });
+  dSel.innerHTML=opts;
+  if(pEl) pEl.value='';
+}
+
+function onD(id){
+  var dSel=document.getElementById('ld-'+id);
+  var pEl=document.getElementById('lp-'+id);
+  var opt=dSel.options[dSel.selectedIndex];
+  if(pEl&&opt) pEl.value=opt.getAttribute('data-pn')||'';
+}
+
+// ── COLLECT LINEAS ───────────────────────────────────────
+function collectLineas(){
+  var lineas=[];
+  for(var i=1;i<=lineaCount;i++){
+    if(!document.getElementById('linea-'+i)) continue;
+    lineas.push({
+      cliente: (document.getElementById('lc-'+i)||{}).value||'',
+      modelo:  (document.getElementById('lm-'+i)||{}).value||'',
+      desc:    (document.getElementById('ld-'+i)||{}).value||'',
+      noParte: (document.getElementById('lp-'+i)||{}).value||'',
+      operador:(document.getElementById('lo-'+i)||{}).value||'',
+      total:   parseInt((document.getElementById('lt-'+i)||{}).value)||0,
+      ng:      parseInt((document.getElementById('ln-'+i)||{}).value)||0,
+      defecto: (document.getElementById('ldef-'+i)||{}).value||''
+    });
+  }
+  return lineas;
+}
+
+// ── GUARDAR ──────────────────────────────────────────────
+async function guardar(){
+  var mesa=document.getElementById('f-mesa').value;
+  var inspector=document.getElementById('f-inspector').value.trim();
+  var fecha=document.getElementById('f-fecha').value;
+  var obs=document.getElementById('f-obs').value.trim();
+
+  if(!mesa)     { showErr('Selecciona una mesa / 테이블을 선택하세요'); return; }
+  if(!inspector){ showErr('Ingresa tu # Inspector GP12'); return; }
+  if(!fecha)    { showErr('Selecciona la fecha / 날짜를 선택하세요'); return; }
+
+  var lineas=collectLineas();
+  if(!lineas.length){ showErr('Agrega al menos 1 línea de inspección'); return; }
+
+  for(var i=0;i<lineas.length;i++){
+    if(!lineas[i].cliente){ showErr('Selecciona el Cliente en Línea #'+(i+1)); return; }
+    if(!lineas[i].modelo) { showErr('Selecciona el Modelo en Línea #'+(i+1)); return; }
+    if(!lineas[i].desc)   { showErr('Selecciona la Descripción en Línea #'+(i+1)); return; }
+  }
+
+  var totalInsp=lineas.reduce(function(a,l){return a+l.total;},0);
+  var totalNG  =lineas.reduce(function(a,l){return a+l.ng;},0);
+  var defPpal  =lineas.reduce(function(a,l){return l.ng>a.ng?l:a;},{ng:0,defecto:''}).defecto;
+  var clientePpal=lineas[0].cliente;
+
+  var btn=document.getElementById('btn-save');
+  btn.disabled=true;
+  btn.textContent='⏳ Guardando...';
+  hideErr();
+
+  var data={
+    mesa:mesa, turno:turno, grupo:grupo,
+    inspector:inspector, cliente:clientePpal,
+    fecha:fecha, observaciones:obs,
+    total:totalInsp, ng:totalNG, defecto:defPpal,
+    lineas:lineas,
+    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+    fechaISO: new Date().toISOString()
+  };
+
+  console.log('Guardando datos:', JSON.stringify({mesa,inspector,fecha,totalInsp,totalNG}));
+
+  try{
+    var ref = await db.collection('gp12_registros').add(data);
+    console.log('✅ Guardado en Firebase! ID:', ref.id);
+    showSuccess(mesa, totalInsp, totalNG, fecha, lineas.length);
+  }catch(e){
+    console.error('❌ Error Firebase:', e.code, e.message);
+    var msg = e.code==='permission-denied' ? 'Sin permisos en Firestore. Verifica las reglas.'
+            : e.code==='unavailable'       ? 'Sin conexión. Verifica tu internet.'
+            : e.code==='not-found'         ? 'Base de datos no encontrada.'
+            : '('+e.code+') '+e.message;
+    showErr('❌ Error al guardar: '+msg);
+    btn.disabled=false;
+    btn.innerHTML='💾 Guardar Registro · 기록 저장';
+  }
+}
+
+// ── SUCCESS ──────────────────────────────────────────────
+function showSuccess(mesa,total,ng,fecha,nLineas){
+  document.getElementById('form-screen').style.display='none';
+  document.getElementById('success-screen').style.display='block';
+  document.getElementById('s-mesa').textContent='M'+mesa;
+  document.getElementById('s-total').textContent=total;
+  document.getElementById('s-ng').textContent=ng;
+  document.getElementById('s-sub').innerHTML=fecha+' · Mesa '+mesa+' · '+nLineas+' línea(s)<br><span style="font-family:\'Noto Sans KR\',sans-serif">클라우드에 저장됨 ✅</span>';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function nuevoReg(){
+  var saveMesa=document.getElementById('f-mesa').value;
+  var saveIns=document.getElementById('f-inspector').value;
+  document.getElementById('modelos-wrap').innerHTML='';
+  lineaCount=0;
+  document.getElementById('f-obs').value='';
+  document.getElementById('btn-add').style.display='block';
+  document.getElementById('btn-save').disabled=false;
+  document.getElementById('btn-save').innerHTML='💾 Guardar Registro · 기록 저장';
+  document.getElementById('success-screen').style.display='none';
+  document.getElementById('form-screen').style.display='block';
+  addLinea();
+  setTimeout(function(){
+    document.getElementById('f-mesa').value=saveMesa;
+    document.getElementById('f-inspector').value=saveIns;
+  },50);
+  window.scrollTo({top:0});
+}
+
+// ── ERROR ─────────────────────────────────────────────────
+function showErr(msg){
+  var e=document.getElementById('errbar');
+  e.textContent=msg; e.classList.add('show');
+  e.scrollIntoView({behavior:'smooth',block:'center'});
+}
+function hideErr(){
+  document.getElementById('errbar').classList.remove('show');
+}
+</script>
+</body>
+</html>
