@@ -1,0 +1,2336 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GP12 — Sistema de Registros</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0e1a;--surface:#111827;--surface2:#1a2235;--surface3:#243047;
+  --border:#1e2d45;--accent:#00d4ff;--accent2:#00ff9d;--accent3:#ff6b35;--accent4:#a855f7;
+  --text:#e8edf5;--text2:#8899bb;--text3:#4a5a7a;
+  --red:#ff4444;--green:#00e676;--yellow:#ffcc02;--orange:#ff9100;
+  --dia:#00d4ff;--noche:#a855f7;--radius:12px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:'IBM Plex Sans',sans-serif;min-height:100vh;overflow-x:hidden}
+.ko{font-family:'Noto Sans KR',sans-serif;font-size:.85em;color:var(--text2);display:block;margin-top:2px}
+/* TOPBAR */
+.topbar{background:linear-gradient(135deg,#0d1929,#111827);border-bottom:1px solid var(--border);padding:0 24px;height:64px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.logo{display:flex;align-items:center;gap:14px}
+.logo-badge{background:linear-gradient(135deg,var(--accent),var(--accent2));width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#000;box-shadow:0 0 20px rgba(0,212,255,.3);line-height:1.2;text-align:center}
+.logo-text{font-size:18px;font-weight:700}
+.logo-text span{color:var(--accent)}
+.topbar-right{display:flex;align-items:center;gap:10px}
+.live-dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.btn{padding:8px 14px;border-radius:8px;border:none;cursor:pointer;font-family:inherit;font-size:13px;font-weight:500;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
+.btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border)}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+.btn-accent{background:linear-gradient(135deg,var(--accent),#0099cc);color:#000;font-weight:600}
+.btn-accent:hover{filter:brightness(1.15)}
+.btn-green{background:linear-gradient(135deg,var(--accent2),#00cc7a);color:#000;font-weight:600}
+.btn-orange{background:linear-gradient(135deg,var(--orange),#cc6600);color:#fff;font-weight:600}
+/* LAYOUT */
+.layout{display:flex;min-height:calc(100vh - 64px)}
+.sidebar{width:220px;min-width:220px;background:var(--surface);border-right:1px solid var(--border);padding:20px 0;display:flex;flex-direction:column;gap:2px}
+.nav-item{display:flex;align-items:center;gap:12px;padding:11px 20px;cursor:pointer;font-size:13px;color:var(--text2);border-left:3px solid transparent;transition:all .2s}
+.nav-item:hover{color:var(--text);background:var(--surface2)}
+.nav-item.active{color:var(--accent);border-left-color:var(--accent);background:rgba(0,212,255,.06)}
+.nav-item .ico{font-size:16px;width:20px;text-align:center}
+.nav-section{padding:16px 20px 6px;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:1px}
+.main{flex:1;padding:28px;overflow-y:auto;max-height:calc(100vh - 64px)}
+.page{display:none}
+.page.active{display:block}
+/* CARDS */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:24px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--accent-kpi,var(--accent))}
+.kpi-label{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
+.kpi-val{font-size:30px;font-weight:700;line-height:1}
+.kpi-sub{font-size:11px;color:var(--text2);margin-top:4px}
+.kpi-icon{position:absolute;right:14px;top:14px;font-size:26px;opacity:.12}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:20px}
+.card-title{font-size:12px;font-weight:600;color:var(--text2);margin-bottom:16px;text-transform:uppercase;letter-spacing:.5px}
+.section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.section-title{font-size:18px;font-weight:600}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px}
+/* TABLE */
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:20px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:var(--surface2);padding:9px 12px;text-align:left;font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--text2);border-bottom:1px solid var(--border)}
+td{padding:9px 12px;border-bottom:1px solid rgba(30,45,69,.5);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.02)}
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600}
+.badge-dia{background:rgba(0,212,255,.15);color:var(--dia)}
+.badge-noche{background:rgba(168,85,247,.15);color:var(--noche)}
+.badge-ok{background:rgba(0,230,118,.15);color:var(--green)}
+.badge-a{background:rgba(0,212,255,.15);color:var(--accent)}
+.badge-b{background:rgba(255,145,0,.15);color:var(--orange)}
+/* PARETO */
+.pareto-wrap{width:100%;overflow-x:auto}
+.pareto-bar-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:12px}
+.pareto-label{width:140px;text-align:right;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px}
+.pareto-track{flex:1;height:26px;background:var(--surface2);border-radius:4px;overflow:hidden;position:relative}
+.pareto-fill{height:100%;border-radius:4px;display:flex;align-items:center;padding-left:8px;font-size:11px;font-weight:700;color:#fff;transition:width .6s ease}
+.pareto-fill.top{background:linear-gradient(90deg,var(--red),#cc2200)}
+.pareto-fill.normal{background:linear-gradient(90deg,var(--accent),#0088aa)}
+.pareto-pct{position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--text2);font-weight:600}
+.pareto-val{width:50px;text-align:right;font-weight:700;color:var(--text)}
+/* CIERRE TURNO */
+.cierre-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.cierre-card{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center}
+.cierre-val{font-size:28px;font-weight:700;line-height:1;margin-bottom:4px}
+.cierre-lbl{font-size:11px;color:var(--text2)}
+.cierre-sub{font-size:10px;color:var(--text3);margin-top:2px;font-family:'Noto Sans KR',sans-serif}
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:20px}
+.modal-overlay.show{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;max-width:520px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.8)}
+.modal-title{font-size:18px;font-weight:700;margin-bottom:18px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.form-row.full{grid-template-columns:1fr}
+.form-group{display:flex;flex-direction:column;gap:5px}
+label{font-size:11px;color:var(--text2);font-weight:500}
+input,select,textarea{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:inherit;font-size:14px;transition:border-color .2s;width:100%}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
+select option{background:var(--surface)}
+.modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}
+/* PW */
+.pw-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:300;align-items:center;justify-content:center;backdrop-filter:blur(8px)}
+.pw-overlay.show{display:flex}
+.pw-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:36px;text-align:center;max-width:320px;width:100%}
+/* QR */
+.qr-wrap{text-align:center;padding:16px 0}
+/* NOTIF */
+.notif{position:fixed;bottom:24px;right:24px;z-index:400;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 16px;font-size:13px;box-shadow:0 4px 24px rgba(0,0,0,.5);transform:translateY(80px);opacity:0;transition:all .3s;max-width:300px}
+.notif.show{transform:translateY(0);opacity:1}
+.notif.success{border-left:3px solid var(--green)}
+.notif.error{border-left:3px solid var(--red)}
+/* CALENDAR */
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:8px}
+.cal-day-head{text-align:center;font-size:10px;color:var(--text3);padding:5px 0;font-weight:600}
+.cal-day{background:var(--surface2);border-radius:8px;min-height:56px;padding:5px;cursor:pointer;border:1px solid transparent;transition:all .2s}
+.cal-day:hover{border-color:var(--accent)}
+.cal-day.today{border-color:var(--accent)!important;background:rgba(0,212,255,.08)}
+.cal-day.has-records{background:rgba(0,230,118,.05)}
+.cal-day.other-month{opacity:.3}
+.cal-day-num{font-size:11px;font-weight:600;color:var(--text2)}
+.cal-day.today .cal-day-num{color:var(--accent)}
+.cal-dots{display:flex;gap:2px;flex-wrap:wrap;margin-top:3px}
+.cal-dot{width:5px;height:5px;border-radius:50%}
+/* SCROLL */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--surface)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+/* RCA alignment fix: keep RCA content at the top inside main dashboard area */
+#page-rca{
+  width:100%;
+  max-width:1400px;
+  margin:0 auto;
+  padding:0 0 24px 0 !important;
+  min-height:auto !important;
+}
+#page-rca .section-head{
+  margin-top:0 !important;
+}
+@media(max-width:900px){.grid-2,.grid-3{grid-template-columns:1fr}.cierre-grid{grid-template-columns:repeat(2,1fr)}.sidebar{display:none}}
+</style>
+</head>
+<body>
+<script>
+function navTo(p,el){
+  document.querySelectorAll('.page').forEach(function(x){x.classList.remove('active');});
+  var rcaPg=document.getElementById('page-rca');
+  if(rcaPg) rcaPg.style.display='none';
+  document.querySelectorAll('.nav-item').forEach(function(x){x.classList.remove('active');});
+  var pg=document.getElementById('page-'+p);
+  if(pg){
+    if(p==='rca'){pg.style.display='block';pg.scrollTop=0;var mainEl=document.querySelector('.main');if(mainEl) mainEl.scrollTo({top:0,behavior:'smooth'});if(typeof renderRcaTabla==='function')renderRcaTabla();}
+    else{pg.classList.add('active');}
+  }
+  if(el) el.classList.add('active');
+}
+</script>
+
+<!-- PW OVERLAY -->
+<div class="pw-overlay" id="pw-overlay">
+  <div class="pw-box">
+    <div style="font-size:44px;margin-bottom:14px">🔐</div>
+    <div style="font-size:18px;font-weight:700;margin-bottom:6px">Acceso Requerido</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:20px;font-family:'Noto Sans KR',sans-serif">접근 비밀번호</div>
+    <input type="password" id="pw-input" style="text-align:center;font-size:18px;letter-spacing:4px;margin-bottom:10px" placeholder="••••••••">
+    <button class="btn btn-accent" style="width:100%;justify-content:center" onclick="checkPW()">Verificar</button>
+    <div style="color:var(--red);font-size:12px;margin-top:8px;display:none" id="pw-error">❌ Contraseña incorrecta</div>
+    <button class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:8px" onclick="closePW()">Cancelar</button>
+  </div>
+</div>
+
+<!-- MODAL NUEVO REGISTRO -->
+<div class="modal-overlay" id="modal-registro">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-title">📋 Nuevo Registro GP12</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Mesa / 테이블</label>
+        <select id="f-mesa">
+          <option value="">Seleccionar...</option>
+          <option value="1">Mesa 1</option><option value="2">Mesa 2</option>
+          <option value="3">Mesa 3</option><option value="4">Mesa 4</option>
+          <option value="5">Mesa 5</option><option value="6">Mesa 6</option>
+          <option value="7">Mesa 7</option><option value="8">Mesa 8</option>
+          <option value="9">Mesa 9</option><option value="10">Mesa 10</option>
+          <option value="11">Mesa 11</option><option value="12">Mesa 12</option>
+          <option value="13">Mesa 13</option><option value="14">Mesa 14</option>
+          <option value="15">Mesa 15</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Turno / 교대</label>
+        <select id="f-turno">
+          <option value="dia">🌅 Día (주간)</option>
+          <option value="noche">🌙 Noche (야간)</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label># Inspector GP12</label>
+        <input type="text" id="f-inspector" placeholder="Ej: GP12-045">
+      </div>
+      <div class="form-group">
+        <label>Grupo / 그룹</label>
+        <select id="f-grupo">
+          <option value="A">Grupo A</option>
+          <option value="B">Grupo B</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Cliente / 고객</label>
+        <input type="text" id="f-cliente" placeholder="Ej: BMW, Honda...">
+      </div>
+      <div class="form-group">
+        <label>Fecha / 날짜</label>
+        <input type="date" id="f-fecha">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Modelo de Pieza / 부품 모델</label>
+        <select id="f-modelo">
+          <option value="">Seleccionar modelo...</option>
+          <option value="MOD-001">MOD-001</option><option value="MOD-002">MOD-002</option>
+          <option value="MOD-003">MOD-003</option><option value="MOD-004">MOD-004</option>
+          <option value="MOD-005">MOD-005</option><option value="MOD-006">MOD-006</option>
+          <option value="MOD-007">MOD-007</option><option value="MOD-008">MOD-008</option>
+          <option value="MOD-009">MOD-009</option><option value="MOD-010">MOD-010</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label># Operador Producción</label>
+        <input type="text" id="f-operador" placeholder="Ej: OP-123">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Piezas Inspeccionadas / 검사 수량</label>
+        <input type="number" id="f-total" placeholder="0" min="0">
+      </div>
+      <div class="form-group">
+        <label>Piezas Rechazadas NG / 불량 수량</label>
+        <input type="number" id="f-ng" placeholder="0" min="0">
+      </div>
+    </div>
+    <div class="form-row full">
+      <div class="form-group">
+        <label>Tipo de Defecto de Rechazo / 결함 유형</label>
+        <select id="f-defecto">
+          <option value="">Sin defecto</option>
+          <option value="Dimensional">Dimensional / 치수 불량</option>
+          <option value="Superficie">Superficie / 표면 불량</option>
+          <option value="Burr">Burr / 버어</option>
+          <option value="Flash">Flash / 플래시</option>
+          <option value="Contaminación">Contaminación / 오염</option>
+          <option value="Color">Color / 색상 불량</option>
+          <option value="Ensamble">Ensamble / 조립 불량</option>
+          <option value="Marca de flujo">Marca de flujo / 플로우 마크</option>
+          <option value="Rechupe">Rechupe / 싱크 마크</option>
+          <option value="Deformación">Deformación / 변형</option>
+          <option value="Grieta">Grieta / 균열</option>
+          <option value="Otro">Otro / 기타</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row full">
+      <div class="form-group">
+        <label>Observaciones / 비고</label>
+        <textarea id="f-obs" rows="2" placeholder="Observaciones..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer" id="modal-reg-footer">
+      <button class="btn btn-ghost" id="btn-cancelar-reg" onclick="closeModal('modal-registro')">Cancelar</button>
+      <button class="btn btn-accent" id="btn-guardar" onclick="guardarRegistro()">💾 Guardar / 저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL QR ÚNICO -->
+<div class="modal-overlay" id="modal-qr">
+  <div class="modal" style="max-width:380px;text-align:center">
+    <div class="modal-title" style="justify-content:center;text-align:center">📱 Código QR GP12</div>
+    <div class="qr-wrap" id="qr-wrap">
+      <img id="qr-img" style="width:240px;height:240px;border-radius:12px;display:block;margin:0 auto" src="" alt="QR">
+    </div>
+    <p style="font-size:12px;color:var(--text2);margin-top:10px">Escanea con tu celular para registrar<br><span style="font-family:'Noto Sans KR',sans-serif">휴대폰으로 스캔하여 등록</span></p>
+    <div style="margin:12px 16px 4px">
+      <a id="qr-direct-link" href="https://calidadbackupsistema-collab.github.io/gp12-sistema/gp12_registro.html" target="_blank"
+        style="display:block;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#000;font-weight:700;padding:11px;border-radius:10px;font-size:13px;text-decoration:none;margin-bottom:8px">
+        🔗 Abrir Formulario de Registro
+      </a>
+      <div style="font-size:10px;color:var(--text3);word-break:break-all;text-align:left;padding:0 4px">
+        https://calidadbackupsistema-collab.github.io/gp12-sistema/gp12_registro.html
+      </div>
+    </div>
+    <div class="modal-footer" style="justify-content:center">
+      <button class="btn btn-ghost" onclick="closeModal('modal-qr')">Cerrar</button>
+      <button class="btn btn-accent" onclick="printQR()">🖨️ Imprimir</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CIERRE TURNO -->
+<div class="modal-overlay" id="modal-cierre">
+  <div class="modal" style="max-width:700px">
+    <div class="modal-title">🔒 Cierre de Turno / 교대 마감</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Turno a Cerrar</label>
+        <select id="cierre-turno">
+          <option value="dia">🌅 Turno Día</option>
+          <option value="noche">🌙 Turno Noche</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Fecha</label>
+        <input type="date" id="cierre-fecha">
+      </div>
+    </div>
+    <div id="cierre-resultado" style="margin-top:16px"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-cierre')">Cerrar</button>
+      <button class="btn btn-orange" onclick="calcularCierre()">📊 Calcular</button>
+      <button class="btn btn-green" onclick="exportarCierre()">⬇️ Excel Cierre</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DIA -->
+<div class="modal-overlay" id="modal-dia">
+  <div class="modal" style="max-width:700px">
+    <div class="modal-title">📅 Registros — <span id="modal-dia-fecha"></span></div>
+    <div id="modal-dia-content"></div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('modal-dia')">Cerrar</button></div>
+  </div>
+</div>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-badge">GP<br>12</div>
+    <div>
+      <div class="logo-text">Sistema <span>GP12</span></div>
+      <div style="font-size:10px;color:var(--text2);font-family:'Noto Sans KR',sans-serif">GP12 기록 시스템</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div style="display:flex;align-items:center;gap:5px"><div class="live-dot"></div><span style="font-size:11px;color:var(--text2)">Live</span></div>
+    <span style="font-size:12px;color:var(--text2)" id="clock">--:--</span>
+    <button class="btn btn-ghost" onclick="showQR()">📱 QR</button>
+    <button class="btn btn-orange" onclick="openModal('modal-cierre');document.getElementById('cierre-fecha').value=new Date().toISOString().slice(0,10)">🔒 Cierre Turno</button>
+    <button class="btn btn-green" onclick="exportExcel()">⬇️ Excel</button>
+  </div>
+</div>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="nav-section">Principal</div>
+    <div class="nav-item active" onclick="navTo('dashboard',this)"><span class="ico">📊</span><div>Dashboard<span class="ko">대시보드</span></div></div>
+    <div class="nav-item" onclick="navTo('pareto',this)"><span class="ico">📉</span><div>Pareto Defectos<span class="ko">결함 파레토</span></div></div>
+    <div class="nav-item" onclick="navTo('top3',this)"><span class="ico">🏆</span><div>Top 3 por Grupo<span class="ko">그룹별 상위 3</span></div></div>
+    <div class="nav-section">Tiempo</div>
+    <div class="nav-item" onclick="navTo('calendario',this)"><span class="ico">📅</span><div>Calendario<span class="ko">달력</span></div></div>
+    <div class="nav-item" onclick="navTo('semanal',this)"><span class="ico">📈</span><div>Resumen Semanal<span class="ko">주간 요약</span></div></div>
+    <div class="nav-item" onclick="navTo('mensual',this)"><span class="ico">📆</span><div>Acumulado Mensual<span class="ko">월간 누적</span></div></div>
+    <div class="nav-section">Datos</div>
+    <div class="nav-item" onclick="navTo('historial',this)"><span class="ico">🗂️</span><div>Historial<span class="ko">이력</span></div></div>
+    <div class="nav-section">Análisis</div>
+    <div class="nav-item" onclick="navTo('auditoria',this)"><span class="ico">🔍</span><div>Auditoría<span class="ko">감사</span></div></div>
+    <div class="nav-item" onclick="navTo('evaluacion',this)"><span class="ico">⭐</span><div>Evaluación<span class="ko">평가</span></div></div>
+    <div class="nav-item" onclick="navTo('rca',this)"><span class="ico">🛠️</span><div>RCA / Contramedidas<span class="ko">근본원인분석</span></div></div>
+  </div>
+
+  <div class="main">
+
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="section-head">
+        <div class="section-title">Dashboard GP12 <span class="ko" style="font-size:12px">GP12 대시보드</span></div>
+        <div style="font-size:12px;color:var(--text2)" id="dash-fecha"></div>
+      </div>
+      <div class="kpi-grid" id="kpi-grid">
+        <div class="kpi" style="--accent-kpi:var(--accent)"><div class="kpi-label">Registros Hoy</div><div class="kpi-val" id="k-hoy">—</div><div class="kpi-sub">Total del día</div><div class="kpi-icon">📋</div></div>
+        <div class="kpi" style="--accent-kpi:var(--red)"><div class="kpi-label">Piezas NG Total</div><div class="kpi-val" id="k-ng">—</div><div class="kpi-sub" id="k-ng-sub">Rechazadas</div><div class="kpi-icon">❌</div></div>
+        <div class="kpi" style="--accent-kpi:var(--accent2)"><div class="kpi-label">FTQ del Mes</div><div class="kpi-val" id="k-ftq">—%</div><div class="kpi-sub">First Time Quality</div><div class="kpi-icon">✅</div></div>
+        <div class="kpi" style="--accent-kpi:var(--orange)"><div class="kpi-label">IPPM del Mes</div><div class="kpi-val" id="k-ippm">—</div><div class="kpi-sub">Partes por millón</div><div class="kpi-icon">📊</div></div>
+        <div class="kpi" style="--accent-kpi:var(--dia)"><div class="kpi-label">Turno Día</div><div class="kpi-val" id="k-dia">—</div><div class="kpi-sub">Registros</div><div class="kpi-icon">🌅</div></div>
+        <div class="kpi" style="--accent-kpi:var(--noche)"><div class="kpi-label">Turno Noche</div><div class="kpi-val" id="k-noche">—</div><div class="kpi-sub">Registros</div><div class="kpi-icon">🌙</div></div>
+        <div class="kpi" style="--accent-kpi:var(--accent)"><div class="kpi-label">Grupo A</div><div class="kpi-val" id="k-ga">—</div><div class="kpi-sub">Registros</div><div class="kpi-icon">🅰️</div></div>
+        <div class="kpi" style="--accent-kpi:var(--orange)"><div class="kpi-label">Grupo B</div><div class="kpi-val" id="k-gb">—</div><div class="kpi-sub">Registros</div><div class="kpi-icon">🅱️</div></div>
+      </div>
+      <!-- Recent -->
+      <div class="section-head"><div class="section-title" style="font-size:14px">Registros Recientes / 최근 기록</div></div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Fecha</th><th>Mesa</th><th>Inspector</th><th>Grupo</th><th>Cliente</th><th>Descripción</th><th>Turno</th><th>Insp.</th><th>NG</th><th>Defecto</th><th>Acción</th></tr></thead>
+        <tbody id="tbl-recientes"></tbody>
+      </table></div>
+    </div>
+
+    <!-- PARETO -->
+    <div class="page" id="page-pareto">
+      <div class="section-head">
+        <div class="section-title">Pareto de Defectos <span class="ko" style="font-size:12px">결함 파레토</span></div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">📅 Pareto Mensual — <span id="pareto-mes-label"></span></div>
+          <div id="pareto-mensual"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">📈 Pareto Semanal (últimos 7 días)</div>
+          <div id="pareto-semanal"></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:16px;font-size:12px;color:var(--text2);margin-top:8px;margin-bottom:24px">
+        <span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:var(--red)"></span>Top 3 (mayor impacto)</span>
+        <span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:var(--accent)"></span>Resto de defectos</span>
+      </div>
+      <!-- TENDENCIAS -->
+      <div class="section-head" style="margin-bottom:14px">
+        <div class="section-title" style="font-size:15px">Tendencia Top 3 Defectos <span class="ko" style="font-size:11px">상위 3 결함 추이</span></div>
+        <div style="display:flex;gap:8px">
+          <button id="trend-btn-mes" onclick="setTrendMode('mes')" style="padding:5px 14px;border-radius:6px;border:1px solid var(--accent);background:rgba(0,212,255,.15);color:var(--accent);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Mensual (semanas)</button>
+          <button id="trend-btn-sem" onclick="setTrendMode('sem')" style="padding:5px 14px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Semanal (días)</button>
+        </div>
+      </div>
+      <div id="trend-container" style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:8px"></div>
+    </div>
+
+    <!-- TOP 3 POR GRUPO -->
+    <div class="page" id="page-top3">
+      <div class="section-head">
+        <div class="section-title">Top 3 Defectos por Grupo <span class="ko" style="font-size:12px">그룹별 상위 3 결함</span></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <!-- Filtro tipo -->
+          <select id="t3-tipo" onchange="renderTop3()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;font-family:inherit">
+            <option value="defecto">Por Defecto / 결함별</option>
+            <option value="cliente">Por Cliente / 고객별</option>
+            <option value="modelo">Por Modelo / 모델별</option>
+            <option value="desc">Por Descripción / 설명별</option>
+          </select>
+          <!-- Filtro periodo -->
+          <select id="t3-periodo" onchange="renderTop3()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;font-family:inherit">
+            <option value="mes">Este mes / 이번 달</option>
+            <option value="sem">Esta semana / 이번 주</option>
+            <option value="hoy">Hoy / 오늘</option>
+            <option value="todo">Todo el historial / 전체</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid-2" id="top3-grupos" style="margin-bottom:24px"></div>
+      <div class="section-head" style="margin-top:8px"><div class="section-title" style="font-size:14px">Top 3 por Mesa / 테이블별</div></div>
+      <div id="top3-mesas" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px"></div>
+    </div>
+
+    <!-- CALENDARIO -->
+    <div class="page" id="page-calendario">
+      <div class="section-head">
+        <div class="section-title">Calendario / 달력</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn btn-ghost" onclick="calNav(-1)">◀</button>
+          <span style="font-size:14px;font-weight:600" id="cal-label"></span>
+          <button class="btn btn-ghost" onclick="calNav(1)">▶</button>
+        </div>
+      </div>
+      <div class="cal-grid">
+        <div class="cal-day-head">Dom</div><div class="cal-day-head">Lun</div><div class="cal-day-head">Mar</div>
+        <div class="cal-day-head">Mié</div><div class="cal-day-head">Jue</div><div class="cal-day-head">Vie</div><div class="cal-day-head">Sáb</div>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
+    </div>
+
+    <!-- SEMANAL -->
+    <div class="page" id="page-semanal">
+      <div class="section-head"><div class="section-title">Resumen Semanal / 주간 요약</div></div>
+      <div class="cierre-grid" id="week-kpis" style="margin-bottom:20px"></div>
+      <div class="grid-2" style="margin-bottom:20px">
+        <div class="card"><div class="card-title">Registros por día / 일별 기록</div><div id="chart-week-reg"></div></div>
+        <div class="card"><div class="card-title">NG por día / 일별 불량</div><div id="chart-week-ng"></div></div>
+      </div>
+      <div class="section-head" style="margin-bottom:14px">
+        <div class="section-title" style="font-size:15px">Evaluación de Inspectores — Semana <span class="ko" style="font-size:11px">주간 검사원 평가</span></div>
+      </div>
+      <div class="grid-2" style="margin-bottom:20px">
+        <div class="card">
+          <div class="card-title">🏆 Más Piezas Inspeccionadas <span class="ko" style="font-size:10px">검사 수량 상위</span></div>
+          <div id="sem-top-insp" style="margin-top:4px"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">🔍 Más Defectos Detectados <span class="ko" style="font-size:10px">결함 감지 상위</span></div>
+          <div id="sem-top-ng" style="margin-top:4px"></div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-title" style="color:var(--orange)">⚠️ Operadores con menos de 1,800 piezas/día esta semana <span class="ko" style="font-size:10px">주간 일 200개 미만</span></div>
+        <div style="font-size:11px;color:var(--text2);margin-bottom:10px">Solo inspectores con registros esta semana / 이번 주 기록 있는 검사원만</div>
+        <div id="sem-baja"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Tabla de Desempeño Semanal <span class="ko" style="font-size:10px">주간 성과 표</span></div>
+        <div class="tbl-wrap" style="margin-top:8px">
+          <table>
+            <thead><tr><th>Inspector</th><th>Registros</th><th>Días</th><th>Total Insp.</th><th>Prom/Día</th><th>Total NG</th><th>FTQ %</th><th>Estado</th></tr></thead>
+            <tbody id="sem-tabla"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- MENSUAL -->
+    <div class="page" id="page-mensual">
+      <div class="section-head"><div class="section-title">Acumulado Mensual / 월간 누적</div></div>
+      <div id="mensual-content"></div>
+    </div>
+
+    <!-- HISTORIAL -->
+    <div class="page" id="page-historial">
+      <div class="section-head">
+        <div class="section-title">Historial Completo / 전체 이력</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input type="text" id="f-busq" placeholder="Buscar..." style="width:160px" oninput="renderHistorial()">
+          <select id="f-fmesa" onchange="renderHistorial()" style="width:110px">
+            <option value="">Todas mesas</option>
+            <option value="1">Mesa 1</option><option value="2">Mesa 2</option><option value="3">Mesa 3</option>
+            <option value="4">Mesa 4</option><option value="5">Mesa 5</option><option value="6">Mesa 6</option>
+            <option value="7">Mesa 7</option><option value="8">Mesa 8</option><option value="9">Mesa 9</option>
+            <option value="10">Mesa 10</option><option value="11">Mesa 11</option><option value="12">Mesa 12</option>
+          </select>
+          <select id="f-fgrupo" onchange="renderHistorial()" style="width:110px">
+            <option value="">Todos grupos</option>
+            <option value="A">Grupo A</option>
+            <option value="B">Grupo B</option>
+          </select>
+          <select id="f-fturno" onchange="renderHistorial()" style="width:120px">
+            <option value="">Todos turnos</option>
+            <option value="dia">🌅 Día</option>
+            <option value="noche">🌙 Noche</option>
+          </select>
+        </div>
+      </div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Fecha</th><th>Mesa</th><th>Inspector</th><th>Grupo</th><th>Cliente</th><th>Modelo</th><th>Op.Prod</th><th>Turno</th><th>Insp.</th><th>NG</th><th>Defecto</th></tr></thead>
+        <tbody id="tbl-historial"></tbody>
+      </table></div>
+    </div>
+
+    <!-- ====== AUDITORÍA ====== -->
+    <div class="page" id="page-auditoria">
+      <div class="section-head">
+        <div class="section-title">Auditoría <span class="ko" style="font-size:12px">감사</span></div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <select id="aud-tipo" onchange="onAudTipoChange()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;font-family:inherit">
+            <option value="cliente">Por Cliente / 고객별</option>
+            <option value="modelo">Por Modelo / 모델별</option>
+            <option value="programa">Por Programa / 프로그램별</option>
+            <option value="puntual">Seleccion Puntual / 개별 검색</option>
+          </select>
+          <div id="aud-puntual-wrap" style="display:none;display:none">
+            <input type="text" id="aud-puntual-input" placeholder="No. de Parte o Descripcion..." oninput="renderAuditoria()"
+              style="padding:6px 12px;border-radius:8px;border:1px solid var(--accent);background:var(--surface2);color:var(--text);font-size:13px;font-family:inherit;width:260px">
+          </div>
+          <select id="aud-periodo" onchange="onAudPeriodoChange()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;font-family:inherit">
+            <option value="mes">Por Mes</option>
+            <option value="sem">Por Semana</option>
+            <option value="dia">Por Día</option>
+            <option value="todo">Todo el historial</option>
+          </select>
+          <!-- Sub-selector mes -->
+          <div id="aud-sub-mes" style="display:flex">
+            <select id="aud-sel-mes" onchange="renderAuditoria()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;font-family:inherit"></select>
+          </div>
+          <!-- Sub-selector semana -->
+          <div id="aud-sub-sem" style="display:none">
+            <select id="aud-sel-sem" onchange="renderAuditoria()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;font-family:inherit"></select>
+          </div>
+          <!-- Sub-selector dia -->
+          <div id="aud-sub-dia" style="display:none">
+            <input type="date" id="aud-sel-dia" onchange="renderAuditoria()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;font-family:inherit">
+          </div>
+        </div>
+      </div>
+      <div id="aud-kpis" class="cierre-grid" style="margin-bottom:20px"></div>
+      <div class="grid-2" style="margin-bottom:20px">
+        <div class="card"><div class="card-title" id="aud-t1">Piezas Inspeccionadas / 검사 수량</div><div id="aud-chart-insp"></div></div>
+        <div class="card"><div class="card-title">Piezas NG / Rechazadas / 불량 수량</div><div id="aud-chart-ng"></div></div>
+      </div>
+      <div class="section-head" style="margin-top:8px;margin-bottom:12px">
+        <div class="section-title" style="font-size:15px">Tendencia Top 5 — Inspección por período <span class="ko" style="font-size:11px">상위 5 추이</span></div>
+      </div>
+      <div id="aud-trend" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px"></div>
+    </div>
+
+    <!-- ====== EVALUACIÓN ====== -->
+    <div class="page" id="page-evaluacion">
+      <div class="section-head">
+        <div class="section-title">Evaluación de Inspectores <span class="ko" style="font-size:12px">검사원 평가</span></div>
+        <select id="eval-periodo" onchange="renderEvaluacion()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;font-family:inherit">
+          <option value="mes">Este mes</option>
+          <option value="sem">Esta semana</option>
+          <option value="hoy">Hoy</option>
+          <option value="todo">Todo el historial</option>
+        </select>
+      </div>
+      <div class="grid-2" style="margin-bottom:20px">
+        <div class="card">
+          <div class="card-title">🏆 Top — Más Piezas Inspeccionadas <span class="ko" style="font-size:10px">검사 수량 상위</span></div>
+          <div id="eval-top-insp" style="margin-top:4px"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">🔍 Top — Más Defectos Detectados <span class="ko" style="font-size:10px">결함 감지 상위</span></div>
+          <div id="eval-top-ng" style="margin-top:4px"></div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-title" style="color:var(--orange)">⚠️ Operadores con menos de 1,800 piezas/día <span class="ko" style="font-size:10px">일 200개 미만 작업자</span></div>
+        <div style="font-size:11px;color:var(--text2);margin-bottom:12px">Solo mesas con registros · Promedio diario / 기록 있는 테이블만 · 일 평균</div>
+        <div id="eval-baja"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Resumen por Inspector <span class="ko" style="font-size:10px">검사원별 요약</span></div>
+        <div class="tbl-wrap" style="margin-top:8px">
+          <table>
+            <thead><tr>
+              <th>Inspector</th><th>Registros</th><th>Días</th>
+              <th>Total Insp.</th><th>Prom/Día</th>
+              <th>Total NG</th><th>Detección %</th><th>FTQ %</th><th>Estado</th>
+            </tr></thead>
+            <tbody id="eval-tabla"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+<!-- ====== RCA PAGE ====== -->
+<div class="page" id="page-rca" style="display:none">
+  <div class="section-head" style="margin-bottom:20px">
+    <div class="section-title">RCA — Análisis de Causa Raíz <span class="ko" style="font-size:11px">근본 원인 분석</span></div>
+    <button onclick="openRcaForm()" style="display:flex;align-items:center;gap:6px;padding:8px 18px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#000;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit">➕ Nueva Semana</button>
+  </div>
+  <div style="font-size:12px;color:var(--text2);margin-bottom:20px">Matriz de contramedidas semanales — Top 3 defectos · 주간 상위 3 결함 대책</div>
+  <div id="rca-tabla"></div>
+</div>
+
+
+  </div>
+</div>
+
+<!-- MODAL RCA FORM -->
+<div class="modal-overlay" id="modal-rca">
+  <div class="modal" style="max-width:780px;width:100%;max-height:92vh;overflow-y:auto">
+    <div class="modal-title">
+      🛠️ <span id="rca-modal-title">Nueva Entrada RCA</span>
+      <button onclick="closeRcaModal()" style="background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer;margin-left:auto;line-height:1">✕</button>
+    </div>
+    <input type="hidden" id="rca-edit-idx" value="">
+    <div style="padding:0 4px">
+
+      <!-- Semana + Responsable -->
+      <div style="display:grid;grid-template-columns:auto 1fr 1fr;gap:12px;margin-bottom:16px;align-items:end">
+        <div>
+          <label style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">Semana / 주차 *</label>
+          <input type="text" id="rca-semana" placeholder="Ej: W24" maxlength="6"
+            style="width:110px;background:var(--surface2);border:1.5px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-family:inherit;font-size:16px;font-weight:700;letter-spacing:2px">
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:6px">👤 Responsable / 담당자</label>
+          <input type="text" id="rca-resp" placeholder="Nombre del responsable..."
+            style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:8px;padding:9px 14px;color:var(--text);font-family:inherit;font-size:13px">
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:6px">✅ Validado Calidad / 품질</label>
+          <input type="text" id="rca-cal" placeholder="Nombre de Calidad..."
+            style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:8px;padding:9px 14px;color:var(--text);font-family:inherit;font-size:13px">
+        </div>
+      </div>
+
+      <!-- TABS — one per defect -->
+      <div style="display:flex;gap:0;margin-bottom:0;border-bottom:2px solid var(--border)">
+        <button id="rca-tab-btn-1" onclick="rcaTab(1)"
+          style="padding:10px 20px;background:rgba(255,68,68,.12);border:none;border-bottom:2px solid #ff4444;color:#ff4444;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;margin-bottom:-2px;border-radius:8px 8px 0 0">
+          🥇 Defecto #1
+        </button>
+        <button id="rca-tab-btn-2" onclick="rcaTab(2)"
+          style="padding:10px 20px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--text2);font-weight:600;font-size:13px;cursor:pointer;font-family:inherit;margin-bottom:-2px;border-radius:8px 8px 0 0">
+          🥈 Defecto #2
+        </button>
+        <button id="rca-tab-btn-3" onclick="rcaTab(3)"
+          style="padding:10px 20px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--text2);font-weight:600;font-size:13px;cursor:pointer;font-family:inherit;margin-bottom:-2px;border-radius:8px 8px 0 0">
+          🥉 Defecto #3
+        </button>
+      </div>
+
+      <!-- TAB PANELS -->
+      <div id="rca-tab-1" style="padding:16px 0">
+        <input type="text" id="rca-def1" placeholder="Nombre del defecto #1 *"
+          style="width:100%;background:var(--surface2);border:1.5px solid rgba(255,68,68,.4);border-radius:8px;padding:9px 14px;color:var(--text);font-family:inherit;font-size:14px;font-weight:600;margin-bottom:14px">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+          <div>
+            <div style="font-size:11px;font-weight:700;color:#ff9100;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">🔧 Ocurrencia</div>
+            <div style="font-size:9px;color:var(--text2);margin-bottom:6px">Prevenir que ocurra / 발생 방지</div>
+            <textarea id="rca-oc1" rows="6" placeholder="¿Qué se hará para que el defecto no ocurra?"
+              style="width:100%;background:var(--surface2);border:1.5px solid rgba(255,145,0,.3);border-radius:8px;padding:9px;color:var(--text);font-family:inherit;font-size:12px;resize:vertical"></textarea>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:700;color:#a855f7;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">🔎 Detección</div>
+            <div style="font-size:9px;color:var(--text2);margin-bottom:6px">Detectar antes de salir / 검출 방법</div>
+            <textarea id="rca-dt1" rows="6" placeholder="¿Cómo se detectará si ocurre?"
+              style="width:100%;background:var(--surface2);border:1.5px solid rgba(168,85,247,.3);border-radius:8px;padding:9px;color:var(--text);font-family:inherit;font-size:12px;resize:vertical"></textarea>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:700;color:#00d4ff;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">⚙️ Sistémica</div>
+            <div style="font-size:9px;color:var(--text2);margin-bottom:6px">Eliminar causa raíz / 시스템 개선</div>
+            <textarea id="rca-si1" rows="6" placeholder="¿Qué cambio sistémico se implementará?"
+              style="width:100%;background:var(--surface2);border:1.5px solid rgba(0,212,255,.3);border-radius:8px;padding:9px;color:var(--text);font-family:inherit;font-size:12px;resize:vertical"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div id="rca-tab-2" style="padding:16px 0;display:none">
+        <input type="text" id="rca-def2" placeholder="Nombre del defecto #2"
+          style="width:100%;background:var(--surface2);border:1.5px solid rgba(255,145,0,.4);border-radius:8px;padding:9px 14px;color:var(--text);font-family:inherit;font-size:14px;font-weight:600;margin-bottom:14px">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+          <div>
+            <div style="font-size:11px;font-weight:700;color:#ff9100;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">🔧 Ocurrencia</div>
+            <div style="font-size:9px;color:var(--text2);margin-bottom:6px">Prevenir que ocurra / 발생 방지</div>
+            <textarea id="rca-oc2" rows="6" placeholder="¿Qué se hará para que el defecto no ocurra?"
+              style="width:100%;background:var(--surface2);border:1.5px solid rgba(255,145,0,.3);border-radius:8px;padding:9px;color:var(--text);font-family:inherit;font-size:12px;resize:vertical"></textarea>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:700;color:#a855f7;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">🔎 Detección</div>
+            <div style="font-size:9px;color:var(--text2);margin-bottom:6px">Detectar antes de salir / 검출 방법</div>
+            <textarea id="rca-dt2" rows="6" placeholder="¿Cómo se detectará si ocurre?"
+              style="width:100%;background:var(--surface2);border:1.5px solid rgba(168,85,247,.3);border-radius:8px;padding:9px;color:var(--text);font-family:inherit;font-size:12px;resize:vertical"></textarea>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:700;color:#00d4ff;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">⚙️ Sistémica</div>
+            <div style="font-size:9px;color:var(--text2);margin-bottom:6px">Eliminar causa raíz / 시스템 개선</div>
+            <textarea id="rca-si2" rows="6" placeholder="¿Qué cambio sistémico se implementará?"
+              style="width:100%;background:var(--surface2);border:1.5px solid rgba(0,212,255,.3);border-radius:8px;padding:9px;color:var(--text);font-family:inherit;font-size:12px;resize:vertical"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div id="rca-tab-3" style="padding:16px 0;display:none">
+        <input type="text" id="rca-def3" placeholder="Nombre del defecto #3"
+          style="width:100%;background:var(--surface2);border:1.5px solid rgba(168,85,247,.4);border-radius:8px;padding:9px 14px;color:var(--text);font-family:inherit;font-size:14px;font-weight:600;margin-bottom:14px">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+          <div>
+            <div style="font-size:11px;font-weight:700;color:#ff9100;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">🔧 Ocurrencia</div>
+            <div style="font-size:9px;color:var(--text2);margin-bottom:6px">Prevenir que ocurra / 발생 방지</div>
+            <textarea id="rca-oc3" rows="6" placeholder="¿Qué se hará para que el defecto no ocurra?"
+              style="width:100%;background:var(--surface2);border:1.5px solid rgba(255,145,0,.3);border-radius:8px;padding:9px;color:var(--text);font-family:inherit;font-size:12px;resize:vertical"></textarea>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:700;color:#a855f7;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">🔎 Detección</div>
+            <div style="font-size:9px;color:var(--text2);margin-bottom:6px">Detectar antes de salir / 검출 방법</div>
+            <textarea id="rca-dt3" rows="6" placeholder="¿Cómo se detectará si ocurre?"
+              style="width:100%;background:var(--surface2);border:1.5px solid rgba(168,85,247,.3);border-radius:8px;padding:9px;color:var(--text);font-family:inherit;font-size:12px;resize:vertical"></textarea>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:700;color:#00d4ff;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">⚙️ Sistémica</div>
+            <div style="font-size:9px;color:var(--text2);margin-bottom:6px">Eliminar causa raíz / 시스템 개선</div>
+            <textarea id="rca-si3" rows="6" placeholder="¿Qué cambio sistémico se implementará?"
+              style="width:100%;background:var(--surface2);border:1.5px solid rgba(0,212,255,.3);border-radius:8px;padding:9px;color:var(--text);font-family:inherit;font-size:12px;resize:vertical"></textarea>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-footer" style="margin-top:8px">
+      <button onclick="closeRcaModal()" class="btn btn-ghost">Cancelar</button>
+      <button onclick="saveRca()" style="padding:10px 28px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#000;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit">💾 Guardar RCA</button>
+    </div>
+  </div>
+</div>
+
+<div class="notif" id="notif"></div>
+
+<script>
+// ============================================================
+// CONFIG FIREBASE — reemplaza con tus datos
+// ============================================================
+const FB = {
+  apiKey:"AIzaSyBRTwiaPIHK2zvnQIR-euLhu2OEYRDN6FU",
+  authDomain:"gp12-database.firebaseapp.com",
+  projectId:"gp12-database",
+  storageBucket:"gp12-database.firebasestorage.app",
+  messagingSenderId:"1076961452512",
+  appId:"1:1076961452512:web:f13fedc6048ff125aa8b85"
+};
+const PASS = "GP12Calidad2024";
+const QR_URL = "https://calidadbackupsistema-collab.github.io/gp12-sistema/gp12_registro.html";
+const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+// Safe Firebase init
+if(!firebase.apps.length){ firebase.initializeApp(FB); }
+const db = firebase.firestore();
+
+let allRecords = [];
+let calYear = new Date().getFullYear();
+let calMonth = new Date().getMonth();
+let pwResolve = null;
+
+// Clock
+setInterval(()=>{document.getElementById('clock').textContent=new Date().toLocaleTimeString('es-MX',{hour12:false,hour:'2-digit',minute:'2-digit'})},1000);
+
+// Live status indicator
+function setLiveStatus(ok, msg){
+  var dot = document.querySelector('.live-dot');
+  var lbl = dot ? dot.nextElementSibling : null;
+  if(ok){
+    if(dot){dot.style.background='var(--green)';dot.style.boxShadow='0 0 8px var(--green)';}
+    if(lbl) lbl.textContent='Live';
+  } else {
+    if(dot){dot.style.background='var(--red)';dot.style.boxShadow='0 0 8px var(--red)';}
+    if(lbl) lbl.textContent=msg||'Sin conexión';
+  }
+}
+
+// Realtime listener
+db.collection('gp12_registros').orderBy('timestamp','desc').onSnapshot(
+  function(snap){
+    allRecords = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+    refreshAll();
+    setLiveStatus(true);
+    console.log('✅ Firebase sync OK — docs:', snap.docs.length);
+  },
+  function(err){
+    console.error('❌ Firestore listener error:', err.code, err.message);
+    setLiveStatus(false, err.code||'Error');
+    // Show error in dashboard
+    toast('❌ Error Firebase: '+err.message, 'error');
+    loadDemo();
+  }
+);
+
+function loadDemo(){
+  const defs=['Dimensional','Superficie','Burr','Flash','Contaminación','Color','Ensamble','Marca de flujo','Rechupe','Deformación'];
+  const clientes=['BMW','Honda','Toyota','VW','Nissan'];
+  const modelos=['MOD-001','MOD-002','MOD-003','MOD-004','MOD-005'];
+  allRecords=[];
+  const today=new Date();
+  for(let i=0;i<80;i++){
+    const d=new Date(today); d.setDate(d.getDate()-Math.floor(Math.random()*28));
+    const total=100+Math.floor(Math.random()*300);
+    const ng=Math.floor(Math.random()*15);
+    allRecords.push({id:'d'+i,
+      mesa:String(Math.floor(Math.random()*12)+1),
+      turno:Math.random()>.5?'dia':'noche',
+      grupo:Math.random()>.5?'A':'B',
+      inspector:'GP12-0'+String(10+Math.floor(Math.random()*40)),
+      operador:'OP-'+String(100+Math.floor(Math.random()*200)),
+      cliente:clientes[Math.floor(Math.random()*clientes.length)],
+      modelo:modelos[Math.floor(Math.random()*modelos.length)],
+      fecha:d.toISOString().slice(0,10),
+      total,ng,
+      defecto:ng>0?defs[Math.floor(Math.random()*defs.length)]:'',
+      observaciones:'',
+      timestamp:{toDate:()=>d}
+    });
+  }
+  refreshAll();
+}
+
+function refreshAll(){
+  updateKPIs();
+  renderRecientes();
+  renderPareto();
+  renderTop3();
+  renderCalendar();
+  renderSemanal();
+  renderMensual();
+  renderHistorial();
+  renderAuditoria();
+  renderEvaluacion();
+  document.getElementById('dash-fecha').textContent=new Date().toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  const now=new Date();
+  document.getElementById('pareto-mes-label').textContent=MESES[now.getMonth()]+' '+now.getFullYear();
+}
+
+// ============================================================
+// KPIs
+// ============================================================
+function updateKPIs(){
+  const today=new Date().toISOString().slice(0,10);
+  const now=new Date();
+  const mesRecs=allRecords.filter(r=>{const d=new Date(r.fecha+'T12:00:00');return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear()});
+  const hoy=allRecords.filter(r=>r.fecha===today);
+  const totalInsp=mesRecs.reduce((a,r)=>a+(parseInt(r.total)||0),0);
+  const totalNG=mesRecs.reduce((a,r)=>a+(parseInt(r.ng)||0),0);
+  const ftq=totalInsp>0?(((totalInsp-totalNG)/totalInsp)*100).toFixed(2):100;
+  const ippm=totalInsp>0?Math.round((totalNG/totalInsp)*1000000):0;
+  setText('k-hoy',hoy.length);
+  setText('k-ng',totalNG);
+  setText('k-ng-sub',totalInsp+' inspeccionadas');
+  setText('k-ftq',ftq+'%');
+  setText('k-ippm',ippm.toLocaleString());
+  setText('k-dia',allRecords.filter(r=>r.turno==='dia').length);
+  setText('k-noche',allRecords.filter(r=>r.turno==='noche').length);
+  setText('k-ga',allRecords.filter(r=>r.grupo==='A').length);
+  setText('k-gb',allRecords.filter(r=>r.grupo==='B').length);
+}
+
+// ============================================================
+// RECIENTES
+// ============================================================
+function renderRecientes(){
+  const tbody=document.getElementById('tbl-recientes');
+  const rows=allRecords.slice(0,10);
+  if(!rows.length){tbody.innerHTML='<tr><td colspan="11" style="text-align:center;color:var(--text2);padding:24px">Sin registros</td></tr>';return}
+  tbody.innerHTML=rows.map(r=>`<tr>
+    <td>${r.fecha||'—'}</td>
+    <td><strong>M${r.mesa}</strong></td>
+    <td style="font-size:11px">${r.inspector||'—'}</td>
+    <td><span class="badge badge-${(r.grupo||'a').toLowerCase()}">${r.grupo||'—'}</span></td>
+    <td style="font-size:11px">${r.cliente||'—'}</td>
+    <td style="font-size:11px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(r.lineas&&r.lineas[0]&&r.lineas[0].desc)?r.lineas[0].desc:(r.desc||r.modelo||'—')}</td>
+    <td><span class="badge badge-${r.turno==='dia'?'dia':'noche'}">${r.turno==='dia'?'🌅':'🌙'}</span></td>
+    <td>${r.total||0}</td>
+    <td style="color:${(parseInt(r.ng)||0)>0?'var(--red)':'var(--green)'};font-weight:700">${r.ng||0}</td>
+    <td style="font-size:11px">${r.defecto||'—'}</td>
+    <td><button onclick="borrarRegistro('${r.id}')" style="background:rgba(255,68,68,.15);border:1px solid var(--red);color:var(--red);border-radius:6px;padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">🗑️ Borrar</button></td>
+  </tr>`).join('');
+}
+
+// ============================================================
+// PARETO
+// ============================================================
+function buildParetoHTML(records){
+  const map={};
+  records.filter(r=>r.defecto&&r.defecto!='').forEach(r=>{
+    if(!map[r.defecto]) map[r.defecto]={ng:0,descs:new Set()};
+    map[r.defecto].ng+=(parseInt(r.ng)||0);
+    // collect descriptions
+    if(r.lineas&&r.lineas.length){
+      r.lineas.forEach(l=>{if(l.desc) map[r.defecto].descs.add(l.desc);});
+    } else if(r.desc) map[r.defecto].descs.add(r.desc);
+  });
+  const sorted=Object.entries(map).sort((a,b)=>b[1].ng-a[1].ng);
+  if(!sorted.length) return '<div style="color:var(--text2);padding:20px;text-align:center">Sin defectos registrados</div>';
+  const max=sorted[0][1].ng||1;
+  const total=sorted.reduce((a,e)=>a+e[1].ng,0)||1;
+  return sorted.map(([def,data],i)=>{
+    const descs=[...data.descs].slice(0,3);
+    return `
+    <div class="pareto-bar-row" style="flex-wrap:wrap;margin-bottom:${descs.length&&i<3?'10px':'6px'}">
+      <div class="pareto-label" title="${def}">${i===0?'🥇':i===1?'🥈':i===2?'🥉':''} ${def}</div>
+      <div class="pareto-track">
+        <div class="pareto-fill ${i<3?'top':'normal'}" style="width:${Math.round((data.ng/max)*100)}%">${data.ng}</div>
+        <div class="pareto-pct">${Math.round((data.ng/total)*100)}%</div>
+      </div>
+      <div class="pareto-val" style="color:${i<3?'var(--red)':'var(--text)'}">${data.ng}</div>
+      ${descs.length&&i<3?`<div style="flex:0 0 100%;padding-left:144px;margin-top:3px;display:flex;flex-wrap:wrap;gap:3px">${descs.map(d=>`<span style="font-size:9px;background:rgba(255,68,68,.12);border:1px solid rgba(255,68,68,.2);color:var(--red);border-radius:4px;padding:1px 6px">${d}</span>`).join('')}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function renderPareto(){
+  const now=new Date();
+  const mesRecs=allRecords.filter(r=>{const d=new Date(r.fecha+'T12:00:00');return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear()});
+  document.getElementById('pareto-mensual').innerHTML=buildParetoHTML(mesRecs);
+  var lbl=document.getElementById('pareto-mes-label');
+  if(lbl) lbl.textContent=MESES[now.getMonth()]+' '+now.getFullYear();
+  const semRecs=allRecords.filter(r=>{const d=new Date(r.fecha+'T12:00:00');return (now-d)<7*24*3600*1000});
+  document.getElementById('pareto-semanal').innerHTML=buildParetoHTML(semRecs);
+  renderTrend(_trendMode||'mes');
+}
+
+// ============================================================
+// TOP 3 POR GRUPO Y MESA
+// ============================================================
+function getTop3Filtered(records,tipo){
+  var map={};
+  records.forEach(function(r){
+    var keys=[];
+    if(!tipo||tipo==='defecto'){if(r.defecto&&r.defecto!='')keys=[r.defecto];}
+    else if(tipo==='cliente'){keys=[r.cliente||'Sin cliente'];}
+    else if(tipo==='modelo'){
+      if(r.lineas&&r.lineas.length)r.lineas.forEach(function(l){if(l.modelo&&keys.indexOf(l.modelo)<0)keys.push(l.modelo);});
+      if(!keys.length)keys=[r.modelo||'Sin modelo'];
+    } else if(tipo==='desc'){
+      if(r.lineas&&r.lineas.length)r.lineas.forEach(function(l){if(l.desc&&keys.indexOf(l.desc)<0)keys.push(l.desc);});
+      if(!keys.length&&r.desc)keys=[r.desc];
+    }
+    keys.forEach(function(key){
+      if(!map[key])map[key]={ng:0,insp:0,descs:new Set(),recs:0};
+      map[key].ng+=(parseInt(r.ng)||0);map[key].insp+=(parseInt(r.total)||0);map[key].recs++;
+      if(r.lineas&&r.lineas.length)r.lineas.forEach(function(l){if(l.desc)map[key].descs.add(l.desc);});
+      else if(r.desc)map[key].descs.add(r.desc);
+    });
+  });
+  return Object.entries(map).sort(function(a,b){return b[1].ng-a[1].ng;}).slice(0,3)
+    .map(function(e){return[e[0],e[1].ng,e[1].insp,[...e[1].descs].slice(0,3),e[1].recs];});
+}
+function getTop3(records){
+  return getTop3Filtered(records,'defecto').map(function(e){return[e[0],e[1],e[3]];});
+}
+function getT3Recs(){
+  var now=new Date();
+  var p=(document.getElementById('t3-periodo')||{}).value||'mes';
+  if(p==='mes')return allRecords.filter(function(r){var d=new Date(r.fecha+'T12:00:00');return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();});
+  if(p==='sem')return allRecords.filter(function(r){return (now-new Date(r.fecha+'T12:00:00'))<7*24*3600*1000;});
+  if(p==='hoy')return allRecords.filter(function(r){return r.fecha===now.toISOString().slice(0,10);});
+  return allRecords;
+}
+function renderTop3(){
+  var emoji=['\uD83E\uDD47','\uD83E\uDD48','\uD83E\uDD49'];
+  var tipo=(document.getElementById('t3-tipo')||{}).value||'defecto';
+  var per=(document.getElementById('t3-periodo')||{}).value||'mes';
+  var pLbl={mes:'Este mes',sem:'Esta semana',hoy:'Hoy',todo:'Historial'}[per]||'';
+  var tLbl={defecto:'Defecto',cliente:'Cliente',modelo:'Modelo',desc:'Descripcion'}[tipo]||'';
+  var allRecs=getT3Recs();
+  var gColors={A:'var(--accent)',B:'var(--orange)'};
+  var gHtml='';
+  ['A','B'].forEach(function(g){
+    var recs=allRecs.filter(function(r){return r.grupo===g;});
+    var top=getTop3Filtered(recs,tipo);
+    var tNG=recs.reduce(function(a,r){return a+(parseInt(r.ng)||0);},0);
+    var tInsp=recs.reduce(function(a,r){return a+(parseInt(r.total)||0);},0);
+    var ftqG=tInsp>0?(((tInsp-tNG)/tInsp)*100).toFixed(1):'100.0';
+    gHtml+='<div class="card">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">'
+        +'<div>'
+          +'<div class="card-title" style="color:'+gColors[g]+';margin-bottom:4px">Grupo '+g+' - Top 3 '+tLbl+'</div>'
+          +'<div style="font-size:11px;color:var(--text2)">'+pLbl+' - '+recs.length+' registros</div>'
+        +'</div>'
+        +'<div style="display:flex;gap:14px;text-align:right">'
+          +'<div><div style="font-size:16px;font-weight:700;color:var(--accent)">'+tInsp.toLocaleString()+'</div><div style="font-size:9px;color:var(--text2)">Inspeccionadas</div></div>'
+          +'<div><div style="font-size:16px;font-weight:700;color:var(--red)">'+tNG.toLocaleString()+'</div><div style="font-size:9px;color:var(--text2)">NG</div></div>'
+          +'<div><div style="font-size:16px;font-weight:700;color:'+(parseFloat(ftqG)>=98?'var(--green)':'var(--orange)')+'">'+ftqG+'%</div><div style="font-size:9px;color:var(--text2)">FTQ</div></div>'
+        +'</div>'
+      +'</div>'
+      +(top.length?top.map(function(entry,i){
+        var key=entry[0],ng=entry[1],insp=entry[2],descs=entry[3],nr=entry[4];
+        var ftqI=insp>0?(((insp-ng)/insp)*100).toFixed(1):'---';
+        return '<div style="padding:12px 0;border-bottom:1px solid var(--border)">'
+          +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">'
+            +'<div style="flex:1"><div style="font-size:14px;font-weight:700;color:var(--text)">'+emoji[i]+' '+key+'</div>'
+            +'<div style="font-size:10px;color:var(--text2);margin-top:2px">'+nr+' reg - '+insp.toLocaleString()+' insp. - FTQ '+ftqI+'%</div></div>'
+            +'<div style="font-size:20px;font-weight:700;color:var(--red);margin-left:12px">'+ng.toLocaleString()+' NG</div>'
+          +'</div>'
+          +(descs&&descs.length&&tipo==='defecto'
+            ?'<div style="display:flex;flex-wrap:wrap;gap:4px">'+descs.map(function(p){
+              return '<span style="font-size:10px;background:rgba(255,68,68,.1);border:1px solid rgba(255,68,68,.25);color:var(--red);border-radius:4px;padding:2px 7px;font-weight:600">'+p+'</span>';
+            }).join('')+'</div>':'')
+          +'</div>';
+      }).join('')
+      :'<div style="color:var(--text2);padding:16px;text-align:center">Sin datos en este periodo</div>')
+    +'</div>';
+  });
+  document.getElementById('top3-grupos').innerHTML=gHtml;
+
+
+  // Per mesa
+  let mHtml='';
+  for(let i=1;i<=15;i++){
+    const mr=allRecords.filter(r=>r.mesa===String(i));
+    const top=getTop3(mr);
+    mHtml+=`
+      <div class="card" style="padding:12px">
+        <div class="card-title" style="margin-bottom:8px">Mesa ${i}</div>
+        ${top.length?top.map(([d,v],idx)=>`
+          <div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:1px solid var(--border)">
+            <span>${emoji[idx]} ${d}</span>
+            <span style="color:var(--red);font-weight:700">${v}</span>
+          </div>`).join('')
+        :'<div style="font-size:11px;color:var(--text3)">Sin datos</div>'}
+      </div>`;
+  }
+  document.getElementById('top3-mesas').innerHTML=mHtml;
+}
+
+// ============================================================
+// CALENDARIO
+// ============================================================
+function renderCalendar(){
+  const label=document.getElementById('cal-label');
+  const grid=document.getElementById('cal-grid');
+  label.textContent=`${MESES[calMonth]} ${calYear}`;
+  const first=new Date(calYear,calMonth,1);
+  const last=new Date(calYear,calMonth+1,0);
+  const today=new Date().toISOString().slice(0,10);
+  let html='';
+  for(let i=0;i<first.getDay();i++){
+    const pv=new Date(calYear,calMonth,i-first.getDay()+1);
+    html+=`<div class="cal-day other-month"><div class="cal-day-num">${pv.getDate()}</div></div>`;
+  }
+  for(let d=1;d<=last.getDate();d++){
+    const ds=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dr=allRecords.filter(r=>r.fecha===ds);
+    const hasDia=dr.some(r=>r.turno==='dia');
+    const hasNoche=dr.some(r=>r.turno==='noche');
+    html+=`<div class="cal-day ${ds===today?'today':''} ${dr.length?'has-records':''}" onclick="showDayModal('${ds}')">
+      <div class="cal-day-num">${d}</div>
+      <div class="cal-dots">
+        ${hasDia?'<div class="cal-dot" style="background:var(--dia)"></div>':''}
+        ${hasNoche?'<div class="cal-dot" style="background:var(--noche)"></div>':''}
+      </div>
+      ${dr.length?`<div style="font-size:9px;color:var(--text2)">${dr.length}r</div>`:''}
+    </div>`;
+  }
+  grid.innerHTML=html;
+}
+
+function calNav(d){calMonth+=d;if(calMonth>11){calMonth=0;calYear++}if(calMonth<0){calMonth=11;calYear--}renderCalendar()}
+
+function showDayModal(ds){
+  const recs=allRecords.filter(r=>r.fecha===ds);
+  document.getElementById('modal-dia-fecha').textContent=ds;
+  const el=document.getElementById('modal-dia-content');
+  if(!recs.length){el.innerHTML='<p style="color:var(--text2);text-align:center;padding:20px">Sin registros este día</p>';openModal('modal-dia');return}
+  el.innerHTML=`<div class="tbl-wrap"><table>
+    <thead><tr><th>Mesa</th><th>Inspector</th><th>Grupo</th><th>Cliente</th><th>Modelo</th><th>Turno</th><th>Insp.</th><th>NG</th><th>Defecto</th></tr></thead>
+    <tbody>${recs.map(r=>`<tr>
+      <td>M${r.mesa}</td><td>${r.inspector||'—'}</td>
+      <td><span class="badge badge-${(r.grupo||'a').toLowerCase()}">${r.grupo||'—'}</span></td>
+      <td>${r.cliente||'—'}</td><td>${r.modelo||'—'}</td>
+      <td><span class="badge badge-${r.turno==='dia'?'dia':'noche'}">${r.turno==='dia'?'🌅':'🌙'}</span></td>
+      <td>${r.total||0}</td>
+      <td style="color:${(parseInt(r.ng)||0)>0?'var(--red)':'var(--green)'}">${r.ng||0}</td>
+      <td>${r.defecto||'—'}</td>
+    </tr>`).join('')}</tbody>
+  </table></div>`;
+  openModal('modal-dia');
+}
+
+// ============================================================
+// SEMANAL
+// ============================================================
+function renderSemanal(){
+  const today=new Date();
+  const dow=today.getDay();
+  let weekTotal=0,weekNG=0,weekInsp=0;
+  const days=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  const regData=[],ngData=[];
+  const weekRecs=[];
+  for(let i=0;i<7;i++){
+    const d=new Date(today);d.setDate(d.getDate()-(dow-i));
+    const ds=d.toISOString().slice(0,10);
+    const dr=allRecords.filter(r=>r.fecha===ds);
+    const ng=dr.reduce((a,r)=>a+(parseInt(r.ng)||0),0);
+    const insp=dr.reduce((a,r)=>a+(parseInt(r.total)||0),0);
+    weekTotal+=dr.length;weekNG+=ng;weekInsp+=insp;
+    regData.push({label:days[i],val:dr.length});
+    ngData.push({label:days[i],val:ng});
+    weekRecs.push(...dr);
+  }
+  const ftq=weekInsp>0?(((weekInsp-weekNG)/weekInsp)*100).toFixed(2):100;
+  const ippm=weekInsp>0?Math.round((weekNG/weekInsp)*1000000):0;
+  document.getElementById('week-kpis').innerHTML=`
+    <div class="cierre-card"><div class="cierre-val" style="color:var(--accent)">${weekTotal}</div><div class="cierre-lbl">Registros semana</div></div>
+    <div class="cierre-card"><div class="cierre-val" style="color:var(--red)">${weekNG}</div><div class="cierre-lbl">NG semana</div></div>
+    <div class="cierre-card"><div class="cierre-val" style="color:var(--accent2)">${ftq}%</div><div class="cierre-lbl">FTQ semana</div></div>
+    <div class="cierre-card"><div class="cierre-val" style="color:var(--orange)">${ippm.toLocaleString()}</div><div class="cierre-lbl">IPPM semana</div></div>`;
+  renderBarSimple('chart-week-reg',regData,'var(--accent)');
+  renderBarSimple('chart-week-ng',ngData,'var(--red)');
+  // Evaluacion semanal
+  renderEvalInspectores(weekRecs,'sem-top-insp','sem-top-ng','sem-baja','sem-tabla');
+}
+
+// Helper evaluacion inspectores — reutilizable
+function renderEvalInspectores(recs,idTopInsp,idTopNG,idBaja,idTabla){
+  const imap={};
+  recs.forEach(function(r){
+    const key=r.inspector||'Desconocido';
+    if(key==='Gestor') return;
+    if(!imap[key]) imap[key]={insp:0,ng:0,recs:0,fechas:new Set()};
+    imap[key].insp+=(parseInt(r.total)||0);
+    imap[key].ng+=(parseInt(r.ng)||0);
+    imap[key].recs++;
+    if(r.fecha) imap[key].fechas.add(r.fecha);
+  });
+  const list=Object.entries(imap).map(([key,d])=>{
+    const dias=d.fechas.size||1;
+    const promDia=Math.round(d.insp/dias);
+    const ftq=d.insp>0?(((d.insp-d.ng)/d.insp)*100).toFixed(1):100;
+    return{key,insp:d.insp,ng:d.ng,recs:d.recs,dias,promDia,ftq};
+  });
+  if(!list.length){
+    [idTopInsp,idTopNG,idBaja,idTabla].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML='<div style="color:var(--text2);padding:12px">Sin registros</div>';});
+    return;
+  }
+  const medals=['🥇','🥈','🥉'];
+  function rankBar(sorted,valueKey,color){
+    const maxV=sorted.length?sorted[0][valueKey]:1;
+    return sorted.slice(0,10).map((d,i)=>{
+      const v=d[valueKey];
+      const pct=Math.round((v/(maxV||1))*100);
+      return `<div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+          <span style="font-weight:600;color:var(--text)">${medals[i]||'·'} ${d.key}</span>
+          <span style="font-weight:700;color:${color}">${v.toLocaleString()}</span>
+        </div>
+        <div style="height:18px;background:var(--surface2);border-radius:4px;overflow:hidden">
+          <div style="width:${pct}%;height:100%;background:${color};border-radius:4px"></div>
+        </div>
+        <div style="font-size:10px;color:var(--text2);margin-top:2px">${d.dias} días · Prom ${d.promDia}/día</div>
+      </div>`;
+    }).join('');
+  }
+  const byInsp=[...list].sort((a,b)=>b.insp-a.insp);
+  const byNG=[...list].sort((a,b)=>b.ng-a.ng);
+  const tiEl=document.getElementById(idTopInsp);if(tiEl)tiEl.innerHTML=rankBar(byInsp,'insp','var(--accent)');
+  const tnEl=document.getElementById(idTopNG);if(tnEl)tnEl.innerHTML=rankBar(byNG,'ng','var(--red)');
+  // Baja produccion
+  const baja=list.filter(d=>d.promDia>0&&d.promDia<1800).sort((a,b)=>a.promDia-b.promDia);
+  const bajaEl=document.getElementById(idBaja);
+  if(bajaEl){
+    bajaEl.innerHTML=baja.length
+      ?'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px">'+baja.map(d=>`
+        <div style="background:rgba(255,145,0,.08);border:1px solid rgba(255,145,0,.3);border-radius:10px;padding:14px">
+          <div style="font-size:13px;font-weight:700;color:var(--orange);margin-bottom:4px">⚠️ ${d.key}</div>
+          <div style="font-size:11px;color:var(--text2);margin-bottom:6px">Promedio: <strong style="color:var(--orange)">${d.promDia} piezas/día</strong> (${d.dias} días)</div>
+          <div style="background:var(--surface2);border-radius:4px;height:6px;overflow:hidden">
+            <div style="width:${Math.min(Math.round((d.promDia/1800)*100),100)}%;height:100%;background:var(--orange);border-radius:4px"></div>
+          </div>
+          <div style="font-size:9px;color:var(--text3);margin-top:3px">${Math.round((d.promDia/1800)*100)}% del mínimo (1,800 pzas)</div>
+        </div>`).join('')+'</div>'
+      :'<div style="color:var(--green);padding:12px;font-weight:600">✅ Todos superan 1,800 piezas/día / 모든 검사원 기준 충족</div>';
+  }
+  // Tabla
+  const tbody=document.getElementById(idTabla);
+  if(tbody){
+    tbody.innerHTML=[...list].sort((a,b)=>b.insp-a.insp).map(d=>`<tr>
+      <td style="font-weight:600">${d.key}</td>
+      <td>${d.recs}</td><td>${d.dias}</td>
+      <td style="font-weight:700">${d.insp.toLocaleString()}</td>
+      <td style="color:${d.promDia<1800?'var(--orange)':'var(--accent)'};font-weight:700">${d.promDia}</td>
+      <td style="color:${d.ng>0?'var(--red)':'var(--green)'};font-weight:700">${d.ng.toLocaleString()}</td>
+      <td style="color:${parseFloat(d.ftq)>=98?'var(--green)':parseFloat(d.ftq)>=95?'var(--yellow)':'var(--red)'};font-weight:700">${d.ftq}%</td>
+      <td>${d.promDia>=1800?'<span style="color:var(--green);font-weight:600">✅ OK</span>':d.promDia>0?'<span style="color:var(--orange);font-weight:600">⚠️ Bajo</span>':'<span style="color:var(--text3)">—</span>'}</td>
+    </tr>`).join('');
+  }
+}
+
+// ============================================================
+// MENSUAL
+// ============================================================
+function renderMensual(){
+  const now=new Date();
+  let html='';
+  for(let m=0;m<3;m++){
+    let mo=now.getMonth()-m,yr=now.getFullYear();
+    if(mo<0){mo+=12;yr--}
+    const mr=allRecords.filter(r=>{const d=new Date(r.fecha+'T12:00:00');return d.getMonth()===mo&&d.getFullYear()===yr});
+    const totalInsp=mr.reduce((a,r)=>a+(parseInt(r.total)||0),0);
+    const totalNG=mr.reduce((a,r)=>a+(parseInt(r.ng)||0),0);
+    const ftq=totalInsp>0?(((totalInsp-totalNG)/totalInsp)*100).toFixed(2):100;
+    const ippm=totalInsp>0?Math.round((totalNG/totalInsp)*1000000):0;
+    // Top 3 defectos del mes
+    const defMap={};
+    mr.filter(r=>r.defecto&&r.defecto!='').forEach(r=>{
+      if(!defMap[r.defecto])defMap[r.defecto]=0;
+      defMap[r.defecto]+=(parseInt(r.ng)||0);
+    });
+    const top3=Object.entries(defMap).sort((a,b)=>b[1]-a[1]).slice(0,3);
+    const medals=['🥇','🥈','🥉'];
+    const top3HTML=top3.length?top3.map(([def,val],i)=>`
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">
+        <div style="font-size:20px">${medals[i]}</div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:700;color:var(--text)">${def}</div>
+          <div style="font-size:10px;color:var(--text2);margin-top:2px">${val} piezas NG</div>
+        </div>
+        <div style="font-size:18px;font-weight:700;color:var(--red)">${val}</div>
+      </div>`).join('')
+      :'<div style="color:var(--text2);padding:12px">Sin defectos registrados</div>';
+
+    html+=`<div class="card" style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <div>
+          <div style="font-size:17px;font-weight:700">${MESES[mo]} ${yr}</div>
+          <div style="font-size:11px;color:var(--text2);font-family:'Noto Sans KR',sans-serif">${mo+1}월 ${yr}년</div>
+        </div>
+        <div style="display:flex;gap:16px;text-align:center">
+          <div><div style="font-size:22px;font-weight:700;color:var(--accent)">${mr.length}</div><div style="font-size:10px;color:var(--text2)">Registros</div></div>
+          <div><div style="font-size:22px;font-weight:700;color:var(--red)">${totalNG}</div><div style="font-size:10px;color:var(--text2)">NG</div></div>
+          <div><div style="font-size:22px;font-weight:700;color:var(--accent2)">${ftq}%</div><div style="font-size:10px;color:var(--text2)">FTQ</div></div>
+          <div><div style="font-size:22px;font-weight:700;color:var(--orange)">${ippm.toLocaleString()}</div><div style="font-size:10px;color:var(--text2)">IPPM</div></div>
+        </div>
+      </div>
+      <div class="grid-2" style="margin-bottom:16px">
+        <div>
+          <div style="font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">
+            Top 3 Defectos del Mes / 월간 상위 3 결함
+          </div>
+          ${top3HTML}
+        </div>
+        <div>${buildParetoHTML(mr)}</div>
+      </div>
+
+    </div>`;
+  }
+  document.getElementById('mensual-content').innerHTML=html;
+}
+
+function saveCM(key,yr,mo){
+  const cm=(document.getElementById('cm-txt-'+yr+'-'+mo)||{}).value||'';
+  const resp=(document.getElementById('cm-resp-'+yr+'-'+mo)||{}).value||'';
+  const cal=(document.getElementById('cm-cal-'+yr+'-'+mo)||{}).value||'';
+  try{localStorage.setItem(key,JSON.stringify({cm,resp,cal}));}catch(e){}
+  // Visual feedback
+  const btn=event.target;if(btn.tagName==='BUTTON'){
+    const orig=btn.textContent;
+    btn.textContent='✅ Guardado';btn.style.background='var(--green)';
+    setTimeout(()=>{btn.textContent=orig;btn.style.background='';},1500);
+  }
+}
+
+// ============================================================
+// HISTORIAL
+// ============================================================
+function renderHistorial(){
+  const busq=(document.getElementById('f-busq')||{}).value||'';
+  const mesa=(document.getElementById('f-fmesa')||{}).value||'';
+  const grupo=(document.getElementById('f-fgrupo')||{}).value||'';
+  const turno=(document.getElementById('f-fturno')||{}).value||'';
+  let recs=allRecords.filter(r=>{
+    if(mesa&&r.mesa!==mesa)return false;
+    if(grupo&&r.grupo!==grupo)return false;
+    if(turno&&r.turno!==turno)return false;
+    if(busq){const s=busq.toLowerCase();return(r.inspector||'').toLowerCase().includes(s)||(r.defecto||'').toLowerCase().includes(s)||(r.cliente||'').toLowerCase().includes(s)||(r.modelo||'').toLowerCase().includes(s)}
+    return true;
+  });
+  const tbody=document.getElementById('tbl-historial');
+  if(!recs.length){tbody.innerHTML='<tr><td colspan="11" style="text-align:center;color:var(--text2);padding:24px">Sin registros</td></tr>';return}
+  tbody.innerHTML=recs.map(r=>`<tr>
+    <td>${r.fecha||'—'}</td><td>M${r.mesa||'—'}</td>
+    <td style="font-size:11px">${r.inspector||'—'}</td>
+    <td><span class="badge badge-${(r.grupo||'a').toLowerCase()}">${r.grupo||'—'}</span></td>
+    <td style="font-size:11px">${r.cliente||'—'}</td>
+    <td style="font-size:11px">${r.modelo||'—'}</td>
+    <td style="font-size:11px">${r.operador||'—'}</td>
+    <td><span class="badge badge-${r.turno==='dia'?'dia':'noche'}">${r.turno==='dia'?'🌅':'🌙'}</span></td>
+    <td>${r.total||0}</td>
+    <td style="color:${(parseInt(r.ng)||0)>0?'var(--red)':'var(--green)'};font-weight:700">${r.ng||0}</td>
+    <td style="font-size:11px">${r.defecto||'—'}</td>
+  </tr>`).join('');
+}
+
+// ============================================================
+// GUARDAR REGISTRO — SIMPLE Y RÁPIDO
+// ============================================================
+async function guardarRegistro(){
+  const mesa=document.getElementById('f-mesa').value;
+  const turno=document.getElementById('f-turno').value;
+  const inspector=document.getElementById('f-inspector').value.trim();
+  const grupo=document.getElementById('f-grupo').value;
+  const cliente=document.getElementById('f-cliente').value.trim();
+  const fecha=document.getElementById('f-fecha').value;
+  const modelo=document.getElementById('f-modelo').value;
+  const operador=document.getElementById('f-operador').value.trim();
+  const total=parseInt(document.getElementById('f-total').value)||0;
+  const ng=parseInt(document.getElementById('f-ng').value)||0;
+  const defecto=document.getElementById('f-defecto').value;
+  const obs=document.getElementById('f-obs').value.trim();
+
+  if(!mesa){toast('Selecciona una mesa','error');return}
+  if(!fecha){toast('Selecciona una fecha','error');return}
+  if(!inspector){toast('Ingresa # Inspector GP12','error');return}
+
+  const btn=document.getElementById('btn-guardar');
+  btn.disabled=true;btn.textContent='⏳ Guardando...';
+
+  const data={mesa,turno,grupo,inspector,operador,cliente,modelo,fecha,total,ng,defecto,observaciones:obs,timestamp:firebase.firestore.FieldValue.serverTimestamp()};
+
+  try{
+    await db.collection('gp12_registros').add(data);
+    toast('✅ Registro guardado / 기록 저장됨','success');
+    const esQR=new URLSearchParams(window.location.search).get('registro')==='1';
+    if(esQR){showSuccessQR(data);}else{closeModal('modal-registro');resetForm();}
+  }catch(e){
+    data.id='loc_'+Date.now();data.timestamp={toDate:()=>new Date()};
+    allRecords.unshift(data);refreshAll();
+    toast('✅ Guardado','success');
+    const esQR2=new URLSearchParams(window.location.search).get('registro')==='1';
+    if(esQR2){showSuccessQR(data);}else{closeModal('modal-registro');resetForm();}
+  }finally{
+    btn.disabled=false;btn.textContent='💾 Guardar / 저장';
+  }
+}
+
+function resetForm(){
+  ['f-inspector','f-cliente','f-operador','f-obs'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
+  document.getElementById('f-total').value='';
+  document.getElementById('f-ng').value='';
+  document.getElementById('f-mesa').value='';
+  document.getElementById('f-modelo').value='';
+  document.getElementById('f-defecto').value='';
+  document.getElementById('f-fecha').value=new Date().toISOString().slice(0,10);
+
+// Auto-open registro modal if opened via QR
+if(new URLSearchParams(window.location.search).get('registro')==='1'){
+  // Wait for Firebase to load then open modal
+  setTimeout(()=>{
+    openModal('modal-registro');
+    // Hide everything except modal - mobile friendly
+    document.querySelector('.topbar').style.display='none';
+    document.querySelector('.layout').style.display='none';
+    document.getElementById('modal-registro').style.alignItems='flex-start';
+    document.getElementById('modal-registro').style.overflowY='auto';
+    document.getElementById('modal-registro').style.paddingTop='0';
+    var modal=document.querySelector('#modal-registro .modal');
+    if(modal){
+      modal.style.maxWidth='100%';
+      modal.style.width='100%';
+      modal.style.minHeight='100vh';
+      modal.style.borderRadius='0';
+      modal.style.margin='0';
+    }
+    // Change title
+    document.title='GP12 — Registro de Inspección';
+  },800);
+}
+}
+
+// ============================================================
+// CIERRE DE TURNO
+// ============================================================
+function calcularCierre(){
+  const turno=document.getElementById('cierre-turno').value;
+  const fecha=document.getElementById('cierre-fecha').value;
+  const recs=allRecords.filter(r=>r.fecha===fecha&&r.turno===turno);
+  const totalInsp=recs.reduce((a,r)=>a+(parseInt(r.total)||0),0);
+  const totalNG=recs.reduce((a,r)=>a+(parseInt(r.ng)||0),0);
+  const totalOK=totalInsp-totalNG;
+  const ftq=totalInsp>0?(((totalInsp-totalNG)/totalInsp)*100).toFixed(4):100;
+  const ippm=totalInsp>0?Math.round((totalNG/totalInsp)*1000000):0;
+  const top3=getTop3(recs);
+  const emoji=['🥇','🥈','🥉'];
+
+  document.getElementById('cierre-resultado').innerHTML=`
+    <div style="font-size:13px;font-weight:600;margin-bottom:12px;color:var(--text2)">
+      ${turno==='dia'?'🌅 Turno Día':'🌙 Turno Noche'} — ${fecha}
+    </div>
+    <div class="cierre-grid" style="margin-bottom:16px">
+      <div class="cierre-card"><div class="cierre-val" style="color:var(--accent)">${totalInsp.toLocaleString()}</div><div class="cierre-lbl">Piezas Inspeccionadas</div><div class="cierre-sub">검사 수량</div></div>
+      <div class="cierre-card"><div class="cierre-val" style="color:var(--red)">${totalNG.toLocaleString()}</div><div class="cierre-lbl">Piezas Rechazadas NG</div><div class="cierre-sub">불량 수량</div></div>
+      <div class="cierre-card"><div class="cierre-val" style="color:var(--accent2)">${ftq}%</div><div class="cierre-lbl">FTQ</div><div class="cierre-sub">First Time Quality</div></div>
+      <div class="cierre-card"><div class="cierre-val" style="color:var(--orange)">${ippm.toLocaleString()}</div><div class="cierre-lbl">IPPM</div><div class="cierre-sub">Partes por Millón</div></div>
+    </div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:8px;font-weight:600">TOP 3 DEFECTOS DEL TURNO</div>
+    ${top3.length?top3.map(([d,v],i)=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+        <span style="font-size:13px">${emoji[i]} ${d}</span>
+        <span style="color:var(--red);font-weight:700">${v} NG</span>
+      </div>`).join('')
+    :'<div style="color:var(--text2)">Sin defectos registrados</div>'}
+    <div style="font-size:11px;color:var(--text3);margin-top:12px">${recs.length} registros en este turno</div>`;
+}
+
+function exportarCierre(){
+  const turno=document.getElementById('cierre-turno').value;
+  const fecha=document.getElementById('cierre-fecha').value;
+  const recs=allRecords.filter(r=>r.fecha===fecha&&r.turno===turno);
+  const totalInsp=recs.reduce((a,r)=>a+(parseInt(r.total)||0),0);
+  const totalNG=recs.reduce((a,r)=>a+(parseInt(r.ng)||0),0);
+  const ftq=totalInsp>0?(((totalInsp-totalNG)/totalInsp)*100).toFixed(4):100;
+  const ippm=totalInsp>0?Math.round((totalNG/totalInsp)*1000000):0;
+  const wb=XLSX.utils.book_new();
+  const ws=[
+    ['REPORTE CIERRE DE TURNO GP12',''],
+    ['Turno',turno==='dia'?'Día (주간)':'Noche (야간)'],
+    ['Fecha',fecha],
+    ['Generado',new Date().toLocaleString('es-MX')],
+    ['',''],
+    ['MÉTRICAS / 지표',''],
+    ['Piezas Inspeccionadas / 검사 수량',totalInsp],
+    ['Piezas Rechazadas NG / 불량 수량',totalNG],
+    ['Piezas OK / 양품 수량',totalInsp-totalNG],
+    ['FTQ — First Time Quality',ftq+'%'],
+    ['IPPM — Partes por Millón',ippm],
+    ['',''],
+    ['REGISTROS DEL TURNO',''],
+    ['Mesa','Inspector','Grupo','Cliente','Modelo','Op.Producción','Inspeccionadas','NG','Defecto'],
+    ...recs.map(r=>[`Mesa ${r.mesa}`,r.inspector||'',r.grupo||'',r.cliente||'',r.modelo||'',r.operador||'',r.total||0,r.ng||0,r.defecto||''])
+  ];
+  const wsh=XLSX.utils.aoa_to_sheet(ws);
+  wsh['!cols']=[{wch:30},{wch:20}];
+  XLSX.utils.book_append_sheet(wb,wsh,'Cierre Turno');
+  XLSX.writeFile(wb,`GP12_Cierre_${turno}_${fecha}.xlsx`);
+  toast('✅ Excel cierre exportado','success');
+}
+
+// ============================================================
+// QR ÚNICO
+// ============================================================
+function showQR(){
+  var url=QR_URL;
+  document.getElementById('qr-img').src='https://api.qrserver.com/v1/create-qr-code/?size=240x240&data='+encodeURIComponent(url)+'&bgcolor=ffffff&color=000000&margin=10';
+  openModal('modal-qr');
+}
+
+function printQR(){
+  const url=QR_URL;
+  const w=window.open('');
+  w.document.write(`<html><body style="text-align:center;background:#fff;padding:40px;font-family:sans-serif">
+    <h2 style="font-size:26px">GP12 — Registro de Inspección</h2>
+    <p style="font-size:14px;color:#666;margin-bottom:20px">Escanea para registrar · 스캔하여 등록<br>Selecciona tu mesa dentro del formulario</p>
+    <img src="https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(url)}" style="width:280px;border:4px solid #000;border-radius:16px;margin:0 auto;display:block">
+    <p style="font-size:11px;color:#999;margin-top:16px">${url}</p>
+  </body></html>`);
+  w.print();w.close();
+}
+
+// ============================================================
+// EXCEL GENERAL
+// ============================================================
+function exportExcel(){
+  if(!allRecords.length){toast('Sin datos para exportar','error');return}
+  const wb=XLSX.utils.book_new();
+  const ws1=[['Fecha','Mesa','Inspector GP12','Grupo','Cliente','Modelo','Op.Producción','Turno','Inspeccionadas','NG','Defecto','Observaciones']];
+  allRecords.forEach(r=>ws1.push([r.fecha||'',`Mesa ${r.mesa}`,r.inspector||'',r.grupo||'',r.cliente||'',r.modelo||'',r.operador||'',r.turno==='dia'?'Día':'Noche',r.total||0,r.ng||0,r.defecto||'',r.observaciones||'']));
+  const s1=XLSX.utils.aoa_to_sheet(ws1);
+  s1['!cols']=[{wch:12},{wch:8},{wch:14},{wch:8},{wch:12},{wch:12},{wch:12},{wch:10},{wch:15},{wch:8},{wch:20},{wch:24}];
+  XLSX.utils.book_append_sheet(wb,s1,'GP12 Registros');
+  // Dashboard sheet
+  const now=new Date();
+  const mesRecs=allRecords.filter(r=>{const d=new Date(r.fecha+'T12:00:00');return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear()});
+  const ti=mesRecs.reduce((a,r)=>a+(parseInt(r.total)||0),0);
+  const tn=mesRecs.reduce((a,r)=>a+(parseInt(r.ng)||0),0);
+  const ws2=[
+    ['DASHBOARD GP12',''],['Generado',new Date().toLocaleString('es-MX')],['',''],
+    ['MÉTRICAS MES',''],
+    ['Total Registros',allRecords.length],['Piezas Inspeccionadas Mes',ti],
+    ['Piezas NG Mes',tn],['FTQ Mes',ti>0?(((ti-tn)/ti)*100).toFixed(4)+'%':'100%'],
+    ['IPPM Mes',ti>0?Math.round((tn/ti)*1000000):0],
+    ['Grupo A',allRecords.filter(r=>r.grupo==='A').length],['Grupo B',allRecords.filter(r=>r.grupo==='B').length],
+  ];
+  const s2=XLSX.utils.aoa_to_sheet(ws2);
+  XLSX.utils.book_append_sheet(wb,s2,'Dashboard');
+  XLSX.writeFile(wb,`GP12_Export_${new Date().toISOString().slice(0,10)}.xlsx`);
+  toast('✅ Excel exportado','success');
+}
+
+// ============================================================
+// BAR CHART SIMPLE
+// ============================================================
+function renderBarSimple(id,data,color){
+  const el=document.getElementById(id);if(!el)return;
+  const max=Math.max(...data.map(d=>d.val),1);
+  el.innerHTML=data.map(d=>`
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;font-size:11px">
+      <div style="width:28px;text-align:right;color:var(--text2)">${d.label}</div>
+      <div style="flex:1;height:20px;background:var(--surface2);border-radius:3px;overflow:hidden">
+        <div style="width:${Math.round((d.val/max)*100)}%;height:100%;background:${color};border-radius:3px;display:flex;align-items:center;padding-left:6px;font-size:10px;font-weight:700;color:#000">${d.val||''}</div>
+      </div>
+      <div style="width:24px;font-weight:700">${d.val}</div>
+    </div>`).join('');
+}
+
+// ============================================================
+// PASSWORD
+// ============================================================
+function requirePW(){return new Promise(r=>{pwResolve=r;document.getElementById('pw-overlay').classList.add('show');document.getElementById('pw-input').value='';document.getElementById('pw-error').style.display='none';setTimeout(()=>document.getElementById('pw-input').focus(),100)})}
+function checkPW(){const v=document.getElementById('pw-input').value;if(v===PASS){document.getElementById('pw-overlay').classList.remove('show');if(pwResolve){pwResolve(true);pwResolve=null}}else{document.getElementById('pw-error').style.display='block';document.getElementById('pw-input').value=''}}
+function closePW(){document.getElementById('pw-overlay').classList.remove('show');if(pwResolve){pwResolve(false);pwResolve=null}}
+document.getElementById('pw-input').addEventListener('keydown',e=>{if(e.key==='Enter')checkPW()});
+
+// ============================================================
+// SUCCESS QR MODE
+// ============================================================
+function showSuccessQR(data){
+  var totalInsp = data.total||0;
+  var totalNG   = data.ng||0;
+  var ftq = totalInsp>0?(((totalInsp-totalNG)/totalInsp)*100).toFixed(2):100;
+  document.getElementById('modal-registro').innerHTML=
+    '<div style="background:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center;font-family:IBM Plex Sans,sans-serif">'
+    +'<div style="font-size:72px;margin-bottom:16px">✅</div>'
+    +'<div style="font-size:22px;font-weight:700;color:#1e293b;margin-bottom:6px">¡Guardado!</div>'
+    +'<div style="font-size:13px;color:#475569;margin-bottom:24px;font-family:Noto Sans KR,sans-serif">저장됨 · '+data.fecha+'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;width:100%;max-width:360px;margin-bottom:28px">'
+      +'<div style="background:#f1f5f9;border-radius:12px;padding:14px">'
+        +'<div style="font-size:22px;font-weight:700;color:#00d4ff">M'+data.mesa+'</div>'
+        +'<div style="font-size:10px;color:#64748b;margin-top:3px">Mesa</div>'
+      +'</div>'
+      +'<div style="background:#f1f5f9;border-radius:12px;padding:14px">'
+        +'<div style="font-size:22px;font-weight:700;color:#1e293b">'+totalInsp+'</div>'
+        +'<div style="font-size:10px;color:#64748b;margin-top:3px">Inspeccionadas</div>'
+      +'</div>'
+      +'<div style="background:#f1f5f9;border-radius:12px;padding:14px">'
+        +'<div style="font-size:22px;font-weight:700;color:'+(totalNG>0?'#ff4444':'#00e676')+'">'+totalNG+'</div>'
+        +'<div style="font-size:10px;color:#64748b;margin-top:3px">NG</div>'
+      +'</div>'
+    +'</div>'
+    +'<div style="font-size:13px;color:#475569;margin-bottom:24px">FTQ: <strong>'+ftq+'%</strong></div>'
+    +'<button onclick="location.reload()" style="width:100%;max-width:360px;padding:16px;border-radius:12px;border:none;background:linear-gradient(135deg,#00d4ff,#00ff9d);color:#000;font-size:16px;font-weight:700;cursor:pointer;margin-bottom:10px;font-family:inherit">'
+      +'📋 Nuevo Registro / 새 기록'
+    +'</button>'
+    +'</div>';
+  document.getElementById('modal-registro').classList.add('show');
+}
+
+// ============================================================
+// BORRAR REGISTRO — contraseña Calidad123
+// ============================================================
+function borrarRegistro(id){
+  var pw=prompt('🔐 Ingresa la contraseña para borrar:\n접근 비밀번호:');
+  if(pw===null) return; // cancelled
+  if(pw!=='Calidad123'){
+    alert('❌ Contraseña incorrecta / 비밀번호가 틀렸습니다');
+    return;
+  }
+  if(!confirm('¿Confirmas que deseas borrar este registro?\n이 기록을 삭제하시겠습니까?')) return;
+  // Delete from Firebase
+  try{
+    db.collection('gp12_registros').doc(id).delete().then(function(){
+      toast('🗑️ Registro eliminado','success');
+    }).catch(function(e){
+      // Also remove from local array if Firebase fails
+      allRecords=allRecords.filter(function(r){return r.id!==id;});
+      refreshAll();
+      toast('🗑️ Registro eliminado (local)','success');
+    });
+  }catch(e){
+    allRecords=allRecords.filter(function(r){return r.id!==id;});
+    refreshAll();
+    toast('🗑️ Registro eliminado','success');
+  }
+}
+
+// ============================================================
+// TENDENCIA SVG LINE CHARTS
+// ============================================================
+var _trendMode='mes';
+
+function setTrendMode(mode){
+  _trendMode=mode;
+  var bm=document.getElementById('trend-btn-mes');
+  var bs=document.getElementById('trend-btn-sem');
+  if(bm&&bs){
+    if(mode==='mes'){
+      bm.style.background='rgba(0,212,255,.15)';bm.style.borderColor='var(--accent)';bm.style.color='var(--accent)';
+      bs.style.background='transparent';bs.style.borderColor='var(--border)';bs.style.color='var(--text2)';
+    }else{
+      bs.style.background='rgba(0,212,255,.15)';bs.style.borderColor='var(--accent)';bs.style.color='var(--accent)';
+      bm.style.background='transparent';bm.style.borderColor='var(--border)';bm.style.color='var(--text2)';
+    }
+  }
+  renderTrend(mode);
+}
+
+function renderTrend(mode){
+  var container=document.getElementById('trend-container');
+  if(!container)return;
+  var now=new Date();
+  var COLORS=['#ff4444','#ff9100','#a855f7'];
+  var RANKS=['\uD83E\uDD47','\uD83E\uDD48','\uD83E\uDD49'];
+  var recs,groups=[];
+  if(mode==='mes'){
+    recs=allRecords.filter(function(r){var d=new Date(r.fecha+'T12:00:00');return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();});
+    for(var w=0;w<4;w++){
+      var wEnd=new Date(now);wEnd.setDate(wEnd.getDate()-(3-w)*7);
+      var wStart=new Date(wEnd);wStart.setDate(wStart.getDate()-6);
+      var wEs=wEnd.toISOString().slice(0,10);var wSs=wStart.toISOString().slice(0,10);
+      groups.push({label:'Sem '+(w+1),recs:recs.filter(function(r){return r.fecha>=wSs&&r.fecha<=wEs;})});
+    }
+  }else{
+    recs=allRecords.filter(function(r){var d=new Date(r.fecha+'T12:00:00');return (now-d)<7*24*3600*1000;});
+    var days=['Dom','Lun','Mar','Mi\u00E9','Jue','Vie','S\u00E1b'];
+    for(var d2=6;d2>=0;d2--){
+      var day=new Date(now);day.setDate(day.getDate()-d2);
+      var ds=day.toISOString().slice(0,10);
+      groups.push({label:days[day.getDay()],recs:recs.filter(function(r){return r.fecha===ds;})});
+    }
+  }
+  // Top 3 defects
+  var defMap={};
+  recs.filter(function(r){return r.defecto&&r.defecto!='';}).forEach(function(r){
+    if(!defMap[r.defecto])defMap[r.defecto]=0;
+    defMap[r.defecto]+=(parseInt(r.ng)||0);
+  });
+  var top3=Object.entries(defMap).sort(function(a,b){return b[1]-a[1];}).slice(0,3).map(function(e){return e[0];});
+  if(!top3.length){
+    container.innerHTML='<div style="grid-column:1/-1;color:var(--text2);text-align:center;padding:32px">Sin datos suficientes / \ub370\uc774\ud130 \ubd80\uc871</div>';
+    return;
+  }
+  var html='';
+  top3.forEach(function(def,di){
+    var color=COLORS[di];
+    var vals=groups.map(function(g){
+      return g.recs.filter(function(r){return r.defecto===def;}).reduce(function(a,r){return a+(parseInt(r.ng)||0);},0);
+    });
+    var maxV=Math.max.apply(null,vals)||1;
+    var total=vals.reduce(function(a,v){return a+v;},0);
+    var W=280,H=110,PAD=30,RPAD=8;
+    var chartW=W-PAD-RPAD,chartH=H-28,n=groups.length;
+    var step=n>1?chartW/(n-1):chartW;
+    var pts=vals.map(function(v,i){
+      return {x:PAD+(n>1?i*step:chartW/2),y:H-22-(v/maxV)*(chartH-6),v:v};
+    });
+    var polyline=pts.map(function(p){return p.x+','+p.y;}).join(' ');
+    var areaPath='M'+pts[0].x+','+(H-22)+' '+pts.map(function(p){return 'L'+p.x+','+p.y;}).join(' ')+' L'+pts[pts.length-1].x+','+(H-22)+' Z';
+    var yLabels='';
+    [0,0.5,1].forEach(function(f){
+      var yv=Math.round(maxV*f);
+      var ypos=H-22-(f*(chartH-6));
+      yLabels+='<text x="'+(PAD-4)+'" y="'+(ypos+4)+'" fill="#4a5a7a" font-size="8" text-anchor="end">'+yv+'</text>';
+      yLabels+='<line x1="'+PAD+'" y1="'+ypos+'" x2="'+(W-RPAD)+'" y2="'+ypos+'" stroke="#1e2d45" stroke-width="0.5" stroke-dasharray="3,3"/>';
+    });
+    var xLabels=groups.map(function(g,i){
+      var x=PAD+(n>1?i*step:chartW/2);
+      return '<text x="'+x+'" y="'+(H-6)+'" fill="#4a5a7a" font-size="8" text-anchor="middle">'+g.label+'</text>';
+    }).join('');
+    var circles=pts.map(function(p,i){
+      return '<circle cx="'+p.x+'" cy="'+p.y+'" r="3.5" fill="'+color+'" stroke="#111827" stroke-width="1.5"><title>'+groups[i].label+': '+p.v+' NG</title></circle>'
+        +(p.v>0?'<text x="'+p.x+'" y="'+(p.y-8)+'" fill="'+color+'" font-size="9" text-anchor="middle" font-weight="700">'+p.v+'</text>':'');
+    }).join('');
+    var svg='<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="overflow:visible">'
+      +'<defs><linearGradient id="tgrad'+di+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="'+color+'" stop-opacity="0.25"/><stop offset="100%" stop-color="'+color+'" stop-opacity="0.02"/></linearGradient></defs>'
+      +'<path d="'+areaPath+'" fill="url(#tgrad'+di+')" />'
+      +'<polyline points="'+polyline+'" fill="none" stroke="'+color+'" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>'
+      +yLabels+xLabels+circles+'</svg>';
+    html+='<div class="card" style="padding:16px">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'
+        +'<div><div style="font-size:13px;font-weight:700;color:'+color+'">'+RANKS[di]+' '+def+'</div>'
+        +'<div style="font-size:10px;color:var(--text2);margin-top:2px">'+(mode==='mes'?'Por semana / \uc8fc\ubcc4':'Por d\u00EDa / \uc77c\ubcc4')+'</div></div>'
+        +'<div style="text-align:right"><div style="font-size:22px;font-weight:700;color:'+color+'">'+total+'</div>'
+        +'<div style="font-size:10px;color:var(--text2)">Total NG</div></div>'
+      +'</div>'+svg+'</div>';
+  });
+  container.innerHTML=html;
+  container.style.gridTemplateColumns='repeat('+top3.length+',1fr)';
+}
+
+// ============================================================
+// AUDITORÍA
+// ============================================================
+function onAudPeriodoChange(){
+  var p=(document.getElementById('aud-periodo')||{}).value||'mes';
+  // Show/hide sub-selectors
+  document.getElementById('aud-sub-mes').style.display = p==='mes'?'flex':'none';
+  document.getElementById('aud-sub-sem').style.display = p==='sem'?'flex':'none';
+  document.getElementById('aud-sub-dia').style.display = p==='dia'?'flex':'none';
+  // Populate selectors based on available records
+  if(p==='mes') populateAudMes();
+  if(p==='sem') populateAudSem();
+  if(p==='dia'){
+    var dEl=document.getElementById('aud-sel-dia');
+    if(dEl&&!dEl.value) dEl.value=new Date().toISOString().slice(0,10);
+  }
+  renderAuditoria();
+}
+function populateAudMes(){
+  var sel=document.getElementById('aud-sel-mes');
+  if(!sel) return;
+  // Get all unique year-months from records
+  var months=new Set();
+  allRecords.forEach(function(r){if(r.fecha) months.add(r.fecha.slice(0,7));});
+  var sorted=[...months].sort().reverse();
+  var cur=sel.value;
+  sel.innerHTML=sorted.map(function(ym){
+    var parts=ym.split('-');
+    var yr=parts[0], mo=parseInt(parts[1])-1;
+    var label=MESES[mo]+' '+yr+' / '+yr+'년 '+(mo+1)+'월';
+    return '<option value="'+ym+'"'+(ym===cur?' selected':'')+'>'+label+'</option>';
+  }).join('');
+  // Default to current month
+  if(!cur||sorted.indexOf(cur)<0){
+    var now=new Date();
+    var defYm=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+    if(sorted.indexOf(defYm)>=0) sel.value=defYm;
+    else if(sorted.length) sel.value=sorted[0];
+  }
+}
+function populateAudSem(){
+  var sel=document.getElementById('aud-sel-sem');
+  if(!sel) return;
+  // Get all unique ISO weeks from records
+  function getISOWeek(dateStr){
+    var d=new Date(dateStr+'T12:00:00');
+    var jan4=new Date(d.getFullYear(),0,4);
+    var dayOfYear=Math.floor((d-new Date(d.getFullYear(),0,0))/86400000);
+    var w=Math.ceil((dayOfYear+jan4.getDay())/7);
+    return d.getFullYear()+'-W'+String(w).padStart(2,'0');
+  }
+  function weekStart(yw){
+    var parts=yw.split('-W');
+    var yr=parseInt(parts[0]),wk=parseInt(parts[1]);
+    var jan4=new Date(yr,0,4);
+    var d=new Date(jan4);
+    d.setDate(jan4.getDate()-(jan4.getDay()||7)+1+(wk-1)*7);
+    return d.toISOString().slice(0,10);
+  }
+  function weekEnd(yw){
+    var d=new Date(weekStart(yw)+'T12:00:00');
+    d.setDate(d.getDate()+6);
+    return d.toISOString().slice(0,10);
+  }
+  var weeks=new Set();
+  allRecords.forEach(function(r){if(r.fecha) weeks.add(getISOWeek(r.fecha));});
+  var sorted=[...weeks].sort().reverse();
+  var cur=sel.value;
+  sel.innerHTML=sorted.map(function(yw){
+    var ws=weekStart(yw), we=weekEnd(yw);
+    var label=yw+' ('+ws+' → '+we+')';
+    return '<option value="'+yw+'"'+(yw===cur?' selected':'')+'>'+label+'</option>';
+  }).join('');
+  if(!cur&&sorted.length) sel.value=sorted[0];
+}
+function getAudRecs(){
+  var now=new Date();
+  var p=(document.getElementById('aud-periodo')||{}).value||'mes';
+  if(p==='mes'){
+    var ym=(document.getElementById('aud-sel-mes')||{}).value||'';
+    if(!ym){ var mn=now.getMonth(),yr=now.getFullYear(); return allRecords.filter(function(r){var d=new Date(r.fecha+'T12:00:00');return d.getMonth()===mn&&d.getFullYear()===yr;}); }
+    return allRecords.filter(function(r){return r.fecha&&r.fecha.slice(0,7)===ym;});
+  }
+  if(p==='sem'){
+    var yw=(document.getElementById('aud-sel-sem')||{}).value||'';
+    if(!yw) return allRecords.filter(function(r){var d=new Date(r.fecha+'T12:00:00');return (now-d)<7*24*3600*1000;});
+    // Get week bounds
+    function getWS(yw2){var parts=yw2.split('-W');var yr2=parseInt(parts[0]),wk=parseInt(parts[1]);var jan4=new Date(yr2,0,4);var d=new Date(jan4);d.setDate(jan4.getDate()-(jan4.getDay()||7)+1+(wk-1)*7);return d.toISOString().slice(0,10);}
+    var ws=getWS(yw);
+    var we=new Date(ws+'T12:00:00');we.setDate(we.getDate()+6);var weStr=we.toISOString().slice(0,10);
+    return allRecords.filter(function(r){return r.fecha&&r.fecha>=ws&&r.fecha<=weStr;});
+  }
+  if(p==='dia'){
+    var dia=(document.getElementById('aud-sel-dia')||{}).value||now.toISOString().slice(0,10);
+    return allRecords.filter(function(r){return r.fecha===dia;});
+  }
+  return allRecords;
+}
+function getAudKey(r){
+  var tipo=document.getElementById('aud-tipo');
+  var t=tipo?tipo.value:'cliente';
+  if(t==='cliente') return r.cliente||'Sin cliente';
+  if(t==='modelo'){
+    if(r.lineas&&r.lineas[0]&&r.lineas[0].modelo) return r.lineas[0].modelo;
+    return r.modelo||'Sin modelo';
+  }
+  if(t==='programa'){
+    if(r.lineas&&r.lineas[0]&&r.lineas[0].desc) return r.lineas[0].desc;
+    return r.desc||r.modelo||'Sin programa';
+  }
+  if(t==='puntual'){
+    // Return desc or noParte from lineas
+    if(r.lineas&&r.lineas[0]){
+      return r.lineas[0].desc||(r.lineas[0].noParte?'PN:'+r.lineas[0].noParte:null)||r.desc||'Sin desc';
+    }
+    return r.desc||r.modelo||'Sin desc';
+  }
+  return r.cliente||'Sin cliente';
+}
+function onAudTipoChange(){
+  var t=(document.getElementById('aud-tipo')||{}).value;
+  var wrap=document.getElementById('aud-puntual-wrap');
+  if(wrap) wrap.style.display=(t==='puntual'?'block':'none');
+  renderAuditoria();
+}
+function renderAuditoria(){
+  // Init sub-selectors if empty
+  var p=(document.getElementById('aud-periodo')||{}).value||'mes';
+  if(p==='mes'){
+    var ms=document.getElementById('aud-sel-mes');
+    if(ms&&!ms.options.length) populateAudMes();
+  }
+  if(p==='sem'){
+    var ss=document.getElementById('aud-sel-sem');
+    if(ss&&!ss.options.length) populateAudSem();
+  }
+  var recs=getAudRecs();
+  var tipo=document.getElementById('aud-tipo');
+  var t=tipo?tipo.value:'cliente';
+  var lbl={'cliente':'Cliente / 고객','modelo':'Modelo / 모델','programa':'Programa / 프로그램'}[t]||'';
+  var t1=document.getElementById('aud-t1');
+  if(t1) t1.textContent='Piezas Inspeccionadas por '+lbl;
+
+  // Puntual filter
+  var tipo2=(document.getElementById('aud-tipo')||{}).value||'cliente';
+  var puntualQ='';
+  if(tipo2==='puntual'){
+    puntualQ=((document.getElementById('aud-puntual-input')||{}).value||'').trim().toLowerCase();
+  }
+  // Group by key
+  var map={};
+  recs.forEach(function(r){
+    // For puntual: match each linea individually
+    if(tipo2==='puntual'){
+      var lineas=r.lineas&&r.lineas.length?r.lineas:[{desc:r.desc,noParte:r.modelo,ng:r.ng,total:r.total}];
+      lineas.forEach(function(l){
+        var key=l.desc||(l.noParte?'PN:'+l.noParte:'')||'Sin desc';
+        if(puntualQ&&key.toLowerCase().indexOf(puntualQ)<0&&(l.noParte||'').toLowerCase().indexOf(puntualQ)<0) return;
+        if(!map[key]) map[key]={insp:0,ng:0,recs:0,fechas:new Set(),pn:l.noParte||''};
+        map[key].insp+=(parseInt(l.total||r.total)||0);
+        map[key].ng+=(parseInt(l.ng||0)||0);
+        map[key].recs++;
+        if(r.fecha) map[key].fechas.add(r.fecha);
+      });
+    } else {
+      var key=getAudKey(r);
+      if(!map[key]) map[key]={insp:0,ng:0,recs:0,fechas:new Set()};
+      map[key].insp+=(parseInt(r.total)||0);
+      map[key].ng+=(parseInt(r.ng)||0);
+      map[key].recs++;
+      if(r.fecha) map[key].fechas.add(r.fecha);
+    }
+  });
+  var sorted=Object.entries(map).sort(function(a,b){return b[1].insp-a[1].insp;});
+
+  // KPIs
+  var totalInsp=sorted.reduce(function(a,e){return a+e[1].insp;},0);
+  var totalNG=sorted.reduce(function(a,e){return a+e[1].ng;},0);
+  var ftq=totalInsp>0?(((totalInsp-totalNG)/totalInsp)*100).toFixed(2):100;
+  var kEl=document.getElementById('aud-kpis');
+  var kLbl=tipo2==='puntual'?'Resultados':lbl+'s';
+  if(kEl) kEl.innerHTML=
+    '<div class="cierre-card"><div class="cierre-val" style="color:var(--accent)">'+sorted.length+'</div><div class="cierre-lbl">'+kLbl+'</div></div>'+
+    '<div class="cierre-card"><div class="cierre-val" style="color:var(--accent)">'+totalInsp.toLocaleString()+'</div><div class="cierre-lbl">Total Insp.</div></div>'+
+    '<div class="cierre-card"><div class="cierre-val" style="color:var(--red)">'+totalNG.toLocaleString()+'</div><div class="cierre-lbl">Total NG</div></div>'+
+    '<div class="cierre-card"><div class="cierre-val" style="color:var(--accent2)">'+ftq+'%</div><div class="cierre-lbl">FTQ</div></div>';
+
+  // Bar chart helper
+  function barChart(containerId, data, color){
+    var el=document.getElementById(containerId);
+    if(!el||!data.length){if(el)el.innerHTML='<div style="color:var(--text2);padding:16px">Sin datos</div>';return;}
+    var max=Math.max.apply(null,data.map(function(d){return d.v;}))||1;
+    el.innerHTML=data.slice(0,10).map(function(d){
+      var pct=Math.round((d.v/max)*100);
+      return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:12px">'
+        +'<div style="width:130px;text-align:right;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px" title="'+d.k+'">'+d.k+'</div>'
+        +'<div style="flex:1;height:22px;background:var(--surface2);border-radius:4px;overflow:hidden;position:relative">'
+          +'<div style="width:'+pct+'%;height:100%;background:'+color+';border-radius:4px;display:flex;align-items:center;padding-left:6px;font-size:11px;font-weight:700;color:#000;min-width:28px">'+d.v.toLocaleString()+'</div>'
+        +'</div>'
+        +'<div style="width:50px;text-align:right;font-weight:700;color:var(--text)">'+d.v.toLocaleString()+'</div>'
+        +'</div>';
+    }).join('');
+  }
+
+  barChart('aud-chart-insp', sorted.map(function(e){return{k:e[0],v:e[1].insp};}), 'var(--accent)');
+  barChart('aud-chart-ng',   sorted.map(function(e){return{k:e[0],v:e[1].ng};}),   'var(--red)');
+
+  // Trend: 5 separate cards
+  var trendEl=document.getElementById('aud-trend');
+  if(!trendEl) return;
+  var now2=new Date();
+  var periodo=(document.getElementById('aud-periodo')||{}).value||'mes';
+  var days2=[],xLabels=[];
+  var dN=['Dom','Lun','Mar','Mie','Jue','Vie','Sab'];
+  if(periodo!=='mes'){
+    for(var dd=6;dd>=0;dd--){var dy=new Date(now2);dy.setDate(dy.getDate()-dd);days2.push({type:'day',ds:dy.toISOString().slice(0,10)});xLabels.push(dN[dy.getDay()]);}
+  } else {
+    for(var ww=0;ww<4;ww++){var wE=new Date(now2);wE.setDate(wE.getDate()-(3-ww)*7);var wS=new Date(wE);wS.setDate(wS.getDate()-6);days2.push({type:'week',start:wS.toISOString().slice(0,10),end:wE.toISOString().slice(0,10)});xLabels.push('Sem '+(ww+1));}
+  }
+  var TC=['#00d4ff','#00e676','#ff9100','#a855f7','#ff4444'];
+  var TR=['1.','2.','3.','4.','5.'];
+  var top5s=sorted.slice(0,5);
+  if(!top5s.length){trendEl.innerHTML='<div style="color:var(--text2);padding:20px">Sin datos</div>';return;}
+  var now3=new Date();
+  var lcKey='gp12_cm_'+now3.getFullYear()+'_'+(now3.getMonth()+1);
+
+  function aSVG(vals,ngVals,color,xlbls){
+    var W=300,H=130,PAD=36,RPAD=6,cW=W-PAD-RPAD,cH=H-30,n=xlbls.length,step=n>1?cW/(n-1):cW;
+    var allV=vals.concat(ngVals||[]);
+    var maxV=Math.max.apply(null,allV)||1;
+    function mkPts(data){return data.map(function(v,i){return{x:PAD+i*step,y:H-22-(v/maxV)*(cH-4),v:v};});}
+    var pts=mkPts(vals), ngPts=ngVals?mkPts(ngVals):[];
+    var poly=pts.map(function(p){return p.x+','+p.y;}).join(' ');
+    var area='M'+pts[0].x+','+(H-22)+' '+pts.map(function(p){return 'L'+p.x+','+p.y;}).join(' ')+' L'+pts[pts.length-1].x+','+(H-22)+' Z';
+    var uid='ag'+Math.random().toString(36).slice(2,6);
+    var s='<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="overflow:visible">'
+      +'<defs><linearGradient id="'+uid+'" x1="0" y1="0" x2="0" y2="1">'
+      +'<stop offset="0%" stop-color="'+color+'" stop-opacity="0.22"/>'
+      +'<stop offset="100%" stop-color="'+color+'" stop-opacity="0.02"/>'
+      +'</linearGradient></defs>'
+      +'<path d="'+area+'" fill="url(#'+uid+')" />';
+    [0,0.25,0.5,0.75,1].forEach(function(f){
+      var yp=H-22-(f*(cH-4));
+      s+='<line x1="'+PAD+'" y1="'+yp+'" x2="'+(W-RPAD)+'" y2="'+yp+'" stroke="#1e2d45" stroke-width="0.5" stroke-dasharray="3,3"/>';
+      s+='<text x="'+(PAD-3)+'" y="'+(yp+4)+'" fill="#4a5a7a" font-size="7.5" text-anchor="end">'+Math.round(maxV*f)+'</text>';
+    });
+    xlbls.forEach(function(lbl,i){
+      s+='<text x="'+(PAD+i*step)+'" y="'+(H-5)+'" fill="#4a5a7a" font-size="8" text-anchor="middle">'+lbl+'</text>';
+    });
+    // Inspeccion — solid line
+    s+='<polyline points="'+poly+'" fill="none" stroke="'+color+'" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>';
+    pts.forEach(function(p,i){
+      s+='<circle cx="'+p.x+'" cy="'+p.y+'" r="3.5" fill="'+color+'" stroke="#111827" stroke-width="1.5"><title>Insp '+xlbls[i]+': '+p.v.toLocaleString()+'</title></circle>';
+      if(p.v>0) s+='<text x="'+p.x+'" y="'+(p.y-8)+'" fill="'+color+'" font-size="8.5" text-anchor="middle" font-weight="700">'+p.v.toLocaleString()+'</text>';
+    });
+    // NG — dashed red line
+    if(ngPts.length){
+      s+='<polyline points="'+ngPts.map(function(p){return p.x+','+p.y;}).join(' ')+'" fill="none" stroke="#ff4444" stroke-width="2" stroke-dasharray="5,3" stroke-linejoin="round" stroke-linecap="round"/>';
+      ngPts.forEach(function(p,i){
+        if(p.v>0){
+          s+='<circle cx="'+p.x+'" cy="'+p.y+'" r="3" fill="#ff4444" stroke="#111827" stroke-width="1.2"><title>NG '+xlbls[i]+': '+p.v.toLocaleString()+'</title></circle>';
+          s+='<text x="'+p.x+'" y="'+(p.y-7)+'" fill="#ff4444" font-size="8" text-anchor="middle" font-weight="700">'+p.v.toLocaleString()+'</text>';
+        }
+      });
+    }
+    // Legend
+    s+='<rect x="'+PAD+'" y="3" width="10" height="3" fill="'+color+'" rx="1"/>'
+      +'<text x="'+(PAD+13)+'" y="7" fill="#8899bb" font-size="7.5">Inspeccion</text>'
+      +'<line x1="'+(PAD+70)+'" y1="4.5" x2="'+(PAD+80)+'" y2="4.5" stroke="#ff4444" stroke-width="2" stroke-dasharray="4,2"/>'
+      +'<text x="'+(PAD+83)+'" y="7" fill="#ff4444" font-size="7.5">NG</text>';
+    return s+'</svg>';
+  }
+    var tHTML='';
+  top5s.forEach(function(e,si){
+    var key=e[0],color=TC[si];
+    var vals=days2.map(function(w){
+      if(w.type==='day') return recs.filter(function(r){return r.fecha===w.ds&&getAudKey(r)===key;}).reduce(function(a,r){return a+(parseInt(r.total)||0);},0);
+      return recs.filter(function(r){return r.fecha>=w.start&&r.fecha<=w.end&&getAudKey(r)===key;}).reduce(function(a,r){return a+(parseInt(r.total)||0);},0);
+    });
+    var ngVals=days2.map(function(w){
+      if(w.type==='day') return recs.filter(function(r){return r.fecha===w.ds&&getAudKey(r)===key;}).reduce(function(a,r){return a+(parseInt(r.ng)||0);},0);
+      return recs.filter(function(r){return r.fecha>=w.start&&r.fecha<=w.end&&getAudKey(r)===key;}).reduce(function(a,r){return a+(parseInt(r.ng)||0);},0);
+    });
+    var total=vals.reduce(function(a,v){return a+v;},0);
+    var totalNG=ngVals.reduce(function(a,v){return a+v;},0);
+    var ftq=total>0?(((total-totalNG)/total)*100).toFixed(1):'100.0';
+    tHTML+='<div class="card" style="padding:16px">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
+        +'<div><div style="font-size:13px;font-weight:700;color:'+color+'">'+TR[si]+' '+key+'</div>'
+        +'<div style="font-size:10px;color:var(--text2);margin-top:2px">Inspeccion vs Rechazo</div></div>'
+        +'<div style="display:flex;gap:12px;text-align:right">'
+          +'<div><div style="font-size:15px;font-weight:700;color:'+color+'">'+total.toLocaleString()+'</div><div style="font-size:9px;color:var(--text2)">Total Insp.</div></div>'
+          +'<div><div style="font-size:15px;font-weight:700;color:#ff4444">'+totalNG.toLocaleString()+'</div><div style="font-size:9px;color:var(--text2)">Total NG</div></div>'
+          +'<div><div style="font-size:15px;font-weight:700;color:'+(parseFloat(ftq)>=98?'var(--green)':'var(--orange)')+'">'+ftq+'%</div><div style="font-size:9px;color:var(--text2)">FTQ</div></div>'
+        +'</div>'
+      +'</div>'
+      +aSVG(vals,ngVals,color,xLabels);
+    tHTML+='</div>';
+  });
+  trendEl.innerHTML=tHTML;
+}
+
+// ============================================================
+// EVALUACIÓN
+// ============================================================
+function getEvalRecs(){
+  var now=new Date();
+  var p=(document.getElementById('eval-periodo')||{}).value||'mes';
+  if(p==='mes') return allRecords.filter(function(r){var d=new Date(r.fecha+'T12:00:00');return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();});
+  if(p==='sem') return allRecords.filter(function(r){var d=new Date(r.fecha+'T12:00:00');return (now-d)<7*24*3600*1000;});
+  if(p==='hoy') return allRecords.filter(function(r){return r.fecha===now.toISOString().slice(0,10);});
+  return allRecords;
+}
+function renderEvaluacion(){
+  var recs=getEvalRecs();
+  renderEvalInspectores(recs,'eval-top-insp','eval-top-ng','eval-baja','eval-tabla');
+}
+// ============================================================
+// HELPERS
+// ============================================================
+// navTo defined at top of body
+function openModal(id){document.getElementById(id).classList.add('show')}
+function closeModal(id){document.getElementById(id).classList.remove('show')}
+document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('show')}));
+function setText(id,v){const el=document.getElementById(id);if(el)el.textContent=v}
+function toast(msg,type='success'){const n=document.getElementById('notif');n.textContent=msg;n.className=`notif ${type} show`;setTimeout(()=>n.classList.remove('show'),3000)}
+
+// INIT
+document.getElementById('f-fecha').value=new Date().toISOString().slice(0,10);
+
+// Auto-open registro modal if opened via QR
+if(new URLSearchParams(window.location.search).get('registro')==='1'){
+  // Wait for Firebase to load then open modal
+  setTimeout(()=>{
+    openModal('modal-registro');
+    // Hide everything except modal - mobile friendly
+    document.querySelector('.topbar').style.display='none';
+    document.querySelector('.layout').style.display='none';
+    document.getElementById('modal-registro').style.alignItems='flex-start';
+    document.getElementById('modal-registro').style.overflowY='auto';
+    document.getElementById('modal-registro').style.paddingTop='0';
+    var modal=document.querySelector('#modal-registro .modal');
+    if(modal){
+      modal.style.maxWidth='100%';
+      modal.style.width='100%';
+      modal.style.minHeight='100vh';
+      modal.style.borderRadius='0';
+      modal.style.margin='0';
+    }
+    // Change title
+    document.title='GP12 — Registro de Inspección';
+  },800);
+}
+document.getElementById('cierre-fecha') && (document.getElementById('cierre-fecha').value=new Date().toISOString().slice(0,10));
+
+// ============================================================
+// RCA — ANÁLISIS DE CAUSA RAÍZ
+// ============================================================
+var RCA_KEY = 'gp12_rca_matrix';
+
+function loadRcaData(){
+  try{ var s=localStorage.getItem(RCA_KEY); return s?JSON.parse(s):[]; }catch(e){ return []; }
+}
+function saveRcaData(data){
+  try{ localStorage.setItem(RCA_KEY, JSON.stringify(data)); }catch(e){}
+}
+
+// Tab switching
+function rcaTab(n){
+  [1,2,3].forEach(function(i){
+    var panel=document.getElementById('rca-tab-'+i);
+    var btn=document.getElementById('rca-tab-btn-'+i);
+    var colors=['#ff4444','#ff9100','#a855f7'];
+    if(panel) panel.style.display=(i===n?'block':'none');
+    if(btn){
+      if(i===n){
+        btn.style.background='rgba('+(i===1?'255,68,68':i===2?'255,145,0':'168,85,247')+',.12)';
+        btn.style.borderBottom='2px solid '+colors[i-1];
+        btn.style.color=colors[i-1];
+        btn.style.fontWeight='700';
+      } else {
+        btn.style.background='transparent';
+        btn.style.borderBottom='2px solid transparent';
+        btn.style.color='var(--text2)';
+        btn.style.fontWeight='600';
+      }
+    }
+  });
+}
+
+function clearRcaForm(){
+  ['rca-def1','rca-def2','rca-def3',
+   'rca-oc1','rca-dt1','rca-si1',
+   'rca-oc2','rca-dt2','rca-si2',
+   'rca-oc3','rca-dt3','rca-si3',
+   'rca-resp','rca-cal'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el) el.value='';
+  });
+  rcaTab(1);
+}
+
+function openRcaForm(editIdx){
+  clearRcaForm();
+  if(editIdx===undefined){
+    document.getElementById('rca-modal-title').textContent='Nueva Entrada RCA';
+    document.getElementById('rca-edit-idx').value='';
+    document.getElementById('rca-semana').value=getCurrentWeekLabel();
+    // Auto-load top 3 from this week
+    var top3=getTop3Defectos(getWeekRecs());
+    document.getElementById('rca-def1').value=top3[0]||'';
+    document.getElementById('rca-def2').value=top3[1]||'';
+    document.getElementById('rca-def3').value=top3[2]||'';
+  } else {
+    var data=loadRcaData();
+    var e=data[editIdx];
+    if(!e) return;
+    document.getElementById('rca-modal-title').textContent='Editar RCA — '+e.semana;
+    document.getElementById('rca-edit-idx').value=editIdx;
+    document.getElementById('rca-semana').value=e.semana||'';
+    document.getElementById('rca-resp').value=e.resp||'';
+    document.getElementById('rca-cal').value=e.cal||'';
+    // Defect 1
+    document.getElementById('rca-def1').value=e.def1||'';
+    document.getElementById('rca-oc1').value=e.oc1||'';
+    document.getElementById('rca-dt1').value=e.dt1||'';
+    document.getElementById('rca-si1').value=e.si1||'';
+    // Defect 2
+    document.getElementById('rca-def2').value=e.def2||'';
+    document.getElementById('rca-oc2').value=e.oc2||'';
+    document.getElementById('rca-dt2').value=e.dt2||'';
+    document.getElementById('rca-si2').value=e.si2||'';
+    // Defect 3
+    document.getElementById('rca-def3').value=e.def3||'';
+    document.getElementById('rca-oc3').value=e.oc3||'';
+    document.getElementById('rca-dt3').value=e.dt3||'';
+    document.getElementById('rca-si3').value=e.si3||'';
+  }
+  rcaTab(1);
+  document.getElementById('modal-rca').style.display='flex';
+}
+
+function closeRcaModal(){
+  document.getElementById('modal-rca').style.display='none';
+}
+
+function getCurrentWeekLabel(){
+  var now=new Date();
+  var start=new Date(now.getFullYear(),0,1);
+  var week=Math.ceil(((now-start)/86400000+start.getDay()+1)/7);
+  return 'W'+String(week).padStart(2,'0');
+}
+
+function getWeekRecs(){
+  var now=new Date();
+  return allRecords.filter(function(r){
+    var d=new Date(r.fecha+'T12:00:00');
+    return (now-d)<7*24*3600*1000;
+  });
+}
+
+function getTop3Defectos(recs){
+  var map={};
+  recs.filter(function(r){return r.defecto&&r.defecto!='';}).forEach(function(r){
+    if(!map[r.defecto])map[r.defecto]=0;
+    map[r.defecto]+=(parseInt(r.ng)||0);
+  });
+  return Object.entries(map).sort(function(a,b){return b[1]-a[1];}).slice(0,3).map(function(e){return e[0];});
+}
+
+function saveRca(){
+  var semana=document.getElementById('rca-semana').value.trim().toUpperCase();
+  var def1=document.getElementById('rca-def1').value.trim();
+  if(!semana){alert('Ingresa el numero de semana (Ej: W24)');return;}
+  if(!def1){alert('Ingresa al menos el Defecto #1 en la pestana Defecto #1');return;}
+  function gv(id){var el=document.getElementById(id);return el?el.value.trim():'';}
+  var entry={
+    semana:semana,
+    def1:def1, oc1:gv('rca-oc1'), dt1:gv('rca-dt1'), si1:gv('rca-si1'),
+    def2:gv('rca-def2'), oc2:gv('rca-oc2'), dt2:gv('rca-dt2'), si2:gv('rca-si2'),
+    def3:gv('rca-def3'), oc3:gv('rca-oc3'), dt3:gv('rca-dt3'), si3:gv('rca-si3'),
+    resp:gv('rca-resp'), cal:gv('rca-cal'),
+    fecha:new Date().toISOString().slice(0,10)
+  };
+  var data=loadRcaData();
+  var editIdx=document.getElementById('rca-edit-idx').value;
+  if(editIdx!==''){
+    data[parseInt(editIdx)]=entry;
+  } else {
+    // Check if semana already exists
+    var existing=data.findIndex(function(d){return d.semana===semana;});
+    if(existing>=0){
+      if(!confirm('Ya existe un RCA para '+semana+'. ¿Deseas reemplazarlo?'))return;
+      data[existing]=entry;
+    } else {
+      data.push(entry);
+    }
+  }
+  // Sort by semana descending
+  data.sort(function(a,b){return b.semana.localeCompare(a.semana);});
+  saveRcaData(data);
+  closeRcaModal();
+  renderRcaTabla();
+  toast('RCA '+semana+' guardado correctamente','success');
+}
+
+function deleteRca(idx){
+  var pw=prompt('Contrasena de administrador para eliminar:');
+  if(pw===null)return;
+  if(pw!=='Calidad123'){alert('Contrasena incorrecta');return;}
+  var data=loadRcaData();
+  var semana=data[idx]?data[idx].semana:'';
+  if(!confirm('Eliminar RCA '+semana+'?'))return;
+  data.splice(idx,1);
+  saveRcaData(data);
+  renderRcaTabla();
+  toast('RCA eliminado','success');
+}
+
+function renderRcaTabla(){
+  var el=document.getElementById('rca-tabla');
+  if(!el) return;
+  var data=loadRcaData();
+  if(!data.length){
+    el.innerHTML='<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:48px;text-align:center;color:var(--text2)">'
+      +'<div style="font-size:32px;margin-bottom:12px">📋</div>'
+      +'<div style="font-size:14px;font-weight:600;margin-bottom:6px">Sin registros RCA</div>'
+      +'<div style="font-size:12px">Presiona "+ Nueva Semana" para agregar el primer análisis</div>'
+      +'</div>';
+    return;
+  }
+  var html='<div style="display:flex;flex-direction:column;gap:16px">';
+  data.forEach(function(d,i){
+    var hasOc=(d.oc1&&d.oc1.length>0)||(d.oc2&&d.oc2.length>0)||(d.oc3&&d.oc3.length>0);
+    var hasDt=(d.dt1&&d.dt1.length>0)||(d.dt2&&d.dt2.length>0)||(d.dt3&&d.dt3.length>0);
+    var hasSi=(d.si1&&d.si1.length>0)||(d.si2&&d.si2.length>0)||(d.si3&&d.si3.length>0);
+    var complete=(hasOc&&hasDt&&hasSi)?'var(--green)':'var(--orange)';
+    html+='<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.15)">'
+      // Header
+      +'<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:var(--surface2);border-bottom:1px solid var(--border)">'
+        +'<div style="display:flex;align-items:center;gap:16px">'
+          +'<div style="background:var(--navy);border:2px solid var(--accent);border-radius:10px;padding:8px 16px;font-size:20px;font-weight:900;color:var(--accent);letter-spacing:2px;font-family:monospace">'+d.semana+'</div>'
+          +'<div>'
+            +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px">'
+              +(d.def1?'<span style="font-size:11px;background:rgba(255,68,68,.15);border:1px solid rgba(255,68,68,.3);color:#ff4444;border-radius:5px;padding:2px 9px;font-weight:600">🥇 '+d.def1+'</span>':'')
+              +(d.def2?'<span style="font-size:11px;background:rgba(255,145,0,.15);border:1px solid rgba(255,145,0,.3);color:#ff9100;border-radius:5px;padding:2px 9px;font-weight:600">🥈 '+d.def2+'</span>':'')
+              +(d.def3?'<span style="font-size:11px;background:rgba(168,85,247,.15);border:1px solid rgba(168,85,247,.3);color:#a855f7;border-radius:5px;padding:2px 9px;font-weight:600">🥉 '+d.def3+'</span>':'')
+            +'</div>'
+            +'<div style="font-size:10px;color:var(--text2)">Registrado: '+d.fecha
+              +(d.resp?' · Responsable: <strong style="color:var(--text)">'+d.resp+'</strong>':'')
+              +(d.cal?' · Calidad: <strong style="color:var(--accent)">'+d.cal+'</strong>':'')
+            +'</div>'
+          +'</div>'
+        +'</div>'
+        +'<div style="display:flex;gap:8px;align-items:center">'
+          +'<span style="font-size:10px;color:'+complete+';font-weight:600">'+(hasOc&&hasDt&&hasSi?'✅ Completo':'⚠️ Pendiente')+'</span>'
+          +'<button onclick="openRcaForm('+i+')" style="padding:6px 14px;background:rgba(0,212,255,.15);border:1px solid var(--accent);color:var(--accent);border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">✏️ Editar</button>'
+          +'<button onclick="deleteRca('+i+')" style="padding:6px 14px;background:rgba(255,68,68,.1);border:1px solid var(--red);color:var(--red);border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">🗑️ Borrar</button>'
+        +'</div>'
+      +'</div>'
+      // Helper
+function defCM(val,label,color,ko,border){
+  return '<div style="padding:12px 14px;'+(border?'border-right:1px solid var(--border);':'')+'">'
+    +'<div style="font-size:10px;font-weight:700;color:'+color+';text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">'+label+'</div>'
+    +(val&&val.length>0?'<div style="font-size:12px;color:var(--text);line-height:1.6">'+val.split('\n').join('<br>')+'</div>'
+    :'<div style="font-size:11px;color:var(--text3);font-style:italic">Sin definir...</div>')
+    +'</div>';
+}
+// 3 defects with tabs view
+// Defecto 1
++(d.def1?'<div style="border-top:1px solid var(--border)">'
+  +'<div style="background:rgba(255,68,68,.08);padding:10px 16px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)">'
+  +'<span style="font-size:12px;font-weight:700;color:#ff4444">🥇 '+d.def1+'</span></div>'
+  +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr">'
+  +defCM(d.oc1,'🔧 Ocurrencia','#ff9100','발생 대책',true)
+  +defCM(d.dt1,'🔎 Deteccion','#a855f7','검출 대책',true)
+  +defCM(d.si1,'⚙️ Sistemica','#00d4ff','시스템 대책',false)
+  +'</div></div>':'')
+// Defecto 2
++(d.def2?'<div style="border-top:1px solid var(--border)">'
+  +'<div style="background:rgba(255,145,0,.08);padding:10px 16px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)">'
+  +'<span style="font-size:12px;font-weight:700;color:#ff9100">🥈 '+d.def2+'</span></div>'
+  +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr">'
+  +defCM(d.oc2,'🔧 Ocurrencia','#ff9100','발생 대책',true)
+  +defCM(d.dt2,'🔎 Deteccion','#a855f7','검출 대책',true)
+  +defCM(d.si2,'⚙️ Sistemica','#00d4ff','시스템 대책',false)
+  +'</div></div>':'')
+// Defecto 3
++(d.def3?'<div style="border-top:1px solid var(--border)">'
+  +'<div style="background:rgba(168,85,247,.08);padding:10px 16px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)">'
+  +'<span style="font-size:12px;font-weight:700;color:#a855f7">🥉 '+d.def3+'</span></div>'
+  +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr">'
+  +defCM(d.oc3,'🔧 Ocurrencia','#ff9100','발생 대책',true)
+  +defCM(d.dt3,'🔎 Deteccion','#a855f7','검출 대책',true)
+  +defCM(d.si3,'⚙️ Sistemica','#00d4ff','시스템 대책',false)
+  +'</div></div>':'')
+
+  });
+  html+='</div>';
+  el.innerHTML=html;
+}
+</script>
+</body>
+</html>
